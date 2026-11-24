@@ -355,7 +355,7 @@ video{width:100%;border-radius:10px;background:#000;aspect-ratio:16/9;display:bl
       <div class="page-head"><div><h2>Configurações</h2><p>Acesso externo, segurança, HLS e backup</p></div><button class="btn primary" id="saveSettings">Salvar alterações</button></div>
       <div class="grid g2">
         <div class="card"><div class="card-h"><h3>Acesso externo</h3></div><div class="card-b">
-          <label class="f"><span>Endereço público usado nos links</span><input type="text" id="sPub" placeholder="http://SEU_IP_PUBLICO:30022"><div class="hint">Vazio = usa o endereço digitado no navegador / pelo player.</div></label>
+          <label class="f"><span>Endereço público usado nos links</span><input type="text" id="sPub" placeholder="http://SEU_IP_PUBLICO:30024"><div class="hint">Vazio = usa o endereço digitado no navegador / pelo player.</div></label>
           <div class="grid g2"><label class="f"><span>Porta do Codermax (TCP)</span><input type="number" id="sPort"><div class="hint">Mudar exige reiniciar o serviço.</div></label>
           <label class="f"><span>Formato padrão da lista</span><select id="sFmt"><option value="hls">HLS (.m3u8)</option><option value="ts">MPEG-TS (.ts)</option></select></label></div>
           <label class="f" style="margin:0"><span>Token de segurança dos links</span><div class="linkbox"><code id="sTok"></code><button class="btn sm danger" id="regen">Gerar novo</button></div><div class="hint">Gerar um novo token invalida todos os links já distribuídos.</div></label>

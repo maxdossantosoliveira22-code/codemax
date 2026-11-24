@@ -8,10 +8,10 @@ Codermax - Gateway UDP (modulador/encoder) -> HTTP MPEG-TS / HLS (m3u8) / M3U
   nao conflita com o Flussonic nem com outros softwares que recebam os
   mesmos streams.
 * Entrega cada canal como:
-    - MPEG-TS direto via HTTP   ->  http://HOST:30022/TOKEN/canal.ts
-    - HLS                       ->  http://HOST:30022/TOKEN/canal/index.m3u8
-    - Lista M3U                 ->  http://HOST:30022/TOKEN/playlist.m3u
-* Interface web em  http://HOST:30022/
+    - MPEG-TS direto via HTTP   ->  http://HOST:30024/TOKEN/canal.ts
+    - HLS                       ->  http://HOST:30024/TOKEN/canal/index.m3u8
+    - Lista M3U                 ->  http://HOST:30024/TOKEN/playlist.m3u
+* Interface web em  http://HOST:30024/
 
 Dependencias: Python 3.8+ (somente biblioteca padrao) e ffmpeg/ffprobe.
 Precisa rodar como root (ou com CAP_NET_RAW) para a captura passiva.
@@ -157,9 +157,9 @@ def fmt_bitrate(bps):
 # --------------------------------------------------------------------------
 
 DEFAULTS = {
-    "port": 30022,
+    "port": 30024,
     "bind": "0.0.0.0",
-    "public_url": "",          # ex: http://200.200.200.200:30022  (vazio = automatico)
+    "public_url": "",          # ex: http://200.200.200.200:30024  (vazio = automatico)
     "admin_user": "nicolas",
     "admin_pass_hash": "",
     "stream_token": "",

@@ -11,15 +11,15 @@ cat > "$OUT" <<'HEADER'
 #  Gateway UDP (modulador/encoder) -> links HLS (.m3u8) / MPEG-TS / M3U
 #
 #  Uso:   sudo bash instalar-codermax.sh --usuario NOME --senha SENHA
-#         sudo bash instalar-codermax.sh --porta 30022     (outra porta)
+#         sudo bash instalar-codermax.sh --porta 30024     (outra porta)
 #         sudo bash instalar-codermax.sh --desinstalar
 #
 #  Pelo SSH (1 linha):
 #   curl -fsSL https://raw.githubusercontent.com/maxdossantosoliveira22-code/codemax/main/instalar-codermax.sh | sudo bash -s -- --usuario NOME --senha SENHA
 #
-#  - Roda na porta 30022 (TCP), separado do Flussonic.
+#  - Roda na porta 30024 (TCP), separado do Flussonic.
 #  - Captura passiva dos UDP: nao ocupa as portas UDP que o Flussonic usa.
-#  - Painel: http://IP_DO_SERVIDOR:30022
+#  - Painel: http://IP_DO_SERVIDOR:30024
 #
 #  Funciona rodando como arquivo OU colando tudo direto no terminal SSH.
 # =====================================================================
@@ -32,7 +32,7 @@ __CODERMAX_PAYLOAD__
 set -e
 APP_DIR=/opt/codermax
 SERVICE=codermax
-PORT=30022
+PORT=30024
 NEW_USER=""
 NEW_PASS=""
 
@@ -83,7 +83,7 @@ if systemctl is-active --quiet $SERVICE; then systemctl stop $SERVICE; fi
 PORT_HEX=$(printf '%04X' "$PORT")
 if awk -v p=":$PORT_HEX" '$4=="0A" && $2 ~ p"$"' /proc/net/tcp /proc/net/tcp6 2>/dev/null | grep -q .; then
   vermelho "A porta $PORT ja esta em uso por outro programa (Flussonic?)."
-  vermelho "Escolha outra:  sudo bash instalar-codermax.sh --porta 30023"
+  vermelho "Escolha outra:  sudo bash instalar-codermax.sh --porta 30025"
   exit 1
 fi
 if pgrep -fa flussonic >/dev/null 2>&1; then
@@ -102,7 +102,12 @@ CODERMAX_SET_USER="$NEW_USER" CODERMAX_SET_PASS="$NEW_PASS" python3 - "$APP_DIR/
 import json, os, sys, hashlib, secrets
 p, port = sys.argv[1], int(sys.argv[2])
 d = json.load(open(p)) if os.path.exists(p) else {}
+old = int(d.get("port") or port)
 d["port"] = port
+pub = (d.get("public_url") or "").rstrip("/")
+if old != port and pub.endswith(":%d" % old):
+    d["public_url"] = pub[: -len(str(old))] + str(port)
+open(os.path.join(os.path.dirname(p), ".porta-antiga"), "w").write(str(old))
 def h(pw):
     salt = secrets.token_hex(8)
     return "pbkdf2$%s$%s" % (salt, hashlib.pbkdf2_hmac("sha256", pw.encode(), salt.encode(), 120000).hex())
@@ -148,6 +153,12 @@ systemctl daemon-reload
 systemctl enable --now $SERVICE >/dev/null 2>&1
 
 # --- 5. firewall -------------------------------------------------------
+OLD_PORT=$(cat "$APP_DIR/data/.porta-antiga" 2>/dev/null || echo "$PORT"); rm -f "$APP_DIR/data/.porta-antiga"
+if [ "$OLD_PORT" != "$PORT" ]; then
+  echo "-> Porta alterada: $OLD_PORT -> $PORT"
+  if command -v ufw >/dev/null; then ufw delete allow $OLD_PORT/tcp >/dev/null 2>&1 || true; fi
+  if command -v firewall-cmd >/dev/null; then firewall-cmd --permanent --remove-port=$OLD_PORT/tcp >/dev/null 2>&1 || true; fi
+fi
 if command -v ufw >/dev/null && ufw status 2>/dev/null | grep -q "Status: active"; then
   ufw allow $PORT/tcp >/dev/null && echo "-> ufw: porta $PORT/tcp liberada"
 elif command -v firewall-cmd >/dev/null && firewall-cmd --state >/dev/null 2>&1; then
