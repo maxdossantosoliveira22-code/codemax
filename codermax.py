@@ -41,7 +41,7 @@ import unicodedata
 from http.server import BaseHTTPRequestHandler, ThreadingHTTPServer
 from urllib.parse import parse_qs, urlparse
 
-VERSION = "1.3.0"
+VERSION = "1.4.0"
 APP = "Codermax"
 
 BASE_DIR = os.path.dirname(os.path.abspath(__file__))
@@ -371,12 +371,17 @@ SOL_PACKET = 263
 PACKET_ADD_MEMBERSHIP = 1
 PACKET_MR_PROMISC = 1
 PACKET_OUTGOING = 4
+PACKET_STATISTICS = 6
 
 
-def _bpf(dst_ip=None, dst_port=None):
+def _bpf(dst_ip=None, dst_port=None, no_outgoing=False):
     """Filtro BPF sobre o cabecalho IP (socket AF_PACKET/SOCK_DGRAM)."""
     ACCEPT, REJECT = "ACCEPT", "REJECT"
-    prog = [
+    prog = []
+    if no_outgoing:  # ignora copias de pacotes que o proprio servidor envia
+        prog += [(0x20, None, None, 0xFFFFF004),   # ld #pkttype
+                 (0x15, REJECT, None, PACKET_OUTGOING)]
+    prog += [
         (0x30, None, REJECT, 9),        # ldb [9]   protocolo
         (0x15, None, REJECT, 17),       # jeq #17 (UDP)
         (0x28, None, None, 6),          # ldh [6]   flags/frag
@@ -403,15 +408,15 @@ def _bpf(dst_ip=None, dst_port=None):
     return raw, len(prog)
 
 
-def open_packet_socket(iface, dst_ip=None, dst_port=None, promisc=False):
+def open_packet_socket(iface, dst_ip=None, dst_port=None, promisc=False, no_outgoing=False):
     s = socket.socket(socket.AF_PACKET, socket.SOCK_DGRAM, socket.htons(ETH_P_IP))
-    code, n = _bpf(dst_ip, dst_port)
+    code, n = _bpf(dst_ip, dst_port, no_outgoing)
     buf = ctypes.create_string_buffer(code)
     fprog = struct.pack("HL", n, ctypes.addressof(buf))
     s.setsockopt(socket.SOL_SOCKET, SO_ATTACH_FILTER, fprog)
     del buf  # o kernel copia o filtro no setsockopt
     try:
-        s.setsockopt(socket.SOL_SOCKET, SO_RCVBUFFORCE, 16 * 1024 * 1024)
+        s.setsockopt(socket.SOL_SOCKET, SO_RCVBUFFORCE, 32 * 1024 * 1024)
     except OSError:
         s.setsockopt(socket.SOL_SOCKET, socket.SO_RCVBUF, 8 * 1024 * 1024)
     s.bind((iface, ETH_P_IP))
@@ -718,8 +723,118 @@ class Hub:
         raise NotImplementedError
 
 
+def capture_worker(iface, ip, port, mode):
+    """Processo dedicado de captura (1 por stream): usa um nucleo proprio,
+    sem disputar o GIL com o resto do sistema. Escreve MPEG-TS no stdout e
+    estatisticas no stderr ("STAT cc_erros perdas_kernel tipo")."""
+    signal.signal(signal.SIGPIPE, signal.SIG_DFL)
+    signal.signal(signal.SIGTERM, signal.SIG_DFL)
+    try:
+        os.nice(-5)  # prioridade um pouco maior que o normal: nao pode perder pacote
+    except OSError:
+        pass
+    port = int(port)
+    out, err = sys.stdout.buffer, sys.stderr
+    raw = mode != "socket"
+    joiner = None
+    try:
+        if raw:
+            if is_multicast(ip):
+                joiner = MulticastJoiner(iface, [ip])
+            s = open_packet_socket(iface, ip, port, no_outgoing=True)
+        else:
+            s = socket.socket(socket.AF_INET, socket.SOCK_DGRAM)
+            s.setsockopt(socket.SOL_SOCKET, socket.SO_REUSEADDR, 1)
+            try:
+                s.setsockopt(socket.SOL_SOCKET, SO_RCVBUFFORCE, 16 * 1024 * 1024)
+            except OSError:
+                pass
+            s.bind((ip if is_multicast(ip) else "", port))
+            if is_multicast(ip):
+                mreq = struct.pack("4s4si", socket.inet_aton(ip), socket.inet_aton("0.0.0.0"),
+                                   socket.if_nametoindex(iface))
+                s.setsockopt(socket.IPPROTO_IP, socket.IP_ADD_MEMBERSHIP, mreq)
+    except Exception as e:
+        err.write("ERR Falha ao abrir captura: %s\n" % e)
+        err.flush()
+        sys.exit(1)
+    s.settimeout(0.5)
+    buf = bytearray(65536)
+    mv = memoryview(buf)
+    pend = bytearray()
+    cc = {}
+    cc_err = drops = 0
+    kind = "-"
+    last_flush = last_stat = time.monotonic()
+    try:
+        while True:
+            try:
+                n = s.recv_into(buf)
+            except socket.timeout:
+                n = 0
+            now = time.monotonic()
+            if n:
+                off = 0
+                if raw:
+                    total = (buf[2] << 8) | buf[3]
+                    if total < n:
+                        n = total
+                    off = (buf[0] & 0x0F) * 4 + 8
+                if n - off >= 188:
+                    if buf[off] != 0x47:  # RTP?
+                        o2 = -1
+                        if (buf[off] >> 6) == 2:
+                            o2 = off + 12 + 4 * (buf[off] & 0x0F)
+                            if buf[off] & 0x10 and o2 + 4 <= n:
+                                o2 += 4 + 4 * ((buf[o2 + 2] << 8) | buf[o2 + 3])
+                            if not (o2 + 188 <= n and buf[o2] == 0x47):
+                                o2 = -1
+                            else:
+                                kind = "rtp"
+                        off = o2
+                    elif kind == "-":
+                        kind = "mpegts"
+                    if off >= 0:
+                        end = off + (n - off) // 188 * 188
+                        i = off
+                        while i < end:
+                            b3 = buf[i + 3]
+                            if b3 & 0x10:
+                                pid = ((buf[i + 1] & 0x1F) << 8) | buf[i + 2]
+                                if pid != 0x1FFF:
+                                    c = b3 & 0x0F
+                                    last = cc.get(pid)
+                                    if last is not None and c != ((last + 1) & 0x0F) and c != last:
+                                        # indicador de descontinuidade do proprio modulador nao e perda
+                                        if not (b3 & 0x20 and buf[i + 4] and buf[i + 5] & 0x80):
+                                            cc_err += 1
+                                    cc[pid] = c
+                            i += 188
+                        pend += mv[off:end]
+            if pend and (len(pend) >= 65536 or now - last_flush >= 0.02):
+                out.write(pend)
+                out.flush()
+                pend.clear()
+                last_flush = now
+            if now - last_stat >= 1:
+                if raw:
+                    try:
+                        _, d = struct.unpack("II", s.getsockopt(SOL_PACKET, PACKET_STATISTICS, 8))
+                        drops += d
+                    except OSError:
+                        pass
+                err.write("STAT %d %d %s\n" % (cc_err, drops, kind))
+                err.flush()
+                last_stat = now
+    except (BrokenPipeError, KeyboardInterrupt):
+        pass
+    finally:
+        if joiner:
+            joiner.close()
+
+
 class UdpSource(Hub):
-    """Recebe um stream UDP de uma interface.
+    """Recebe um stream UDP de uma interface, num processo de captura dedicado.
 
     mode='raw'    -> captura passiva AF_PACKET (padrao, nao ocupa a porta)
     mode='socket' -> socket UDP tradicional com SO_REUSEADDR
@@ -730,97 +845,87 @@ class UdpSource(Hub):
         self.iface, self.ip, self.port, self.mode = iface, ip, int(port), mode
         self.name = "udp://%s:%d@%s" % (ip, self.port, iface)
         self.kind = None
-        self.thread = None
-        self._cc = {}
+        self.proc = None
+        self.kernel_drops = 0
+        self.cc_hist = collections.deque(maxlen=120)  # (t, cc_total)
 
-    def check_cc(self, ts):
-        """Conta erros de continuidade (perda de pacotes) do MPEG-TS."""
-        cc = self._cc
-        for i in range(0, len(ts) - 187, 188):
-            b1, b2, b3 = ts[i + 1], ts[i + 2], ts[i + 3]
-            pid = ((b1 & 0x1F) << 8) | b2
-            if pid == 0x1FFF or not (b3 & 0x10):
-                continue
-            c = b3 & 0x0F
-            last = cc.get(pid)
-            if last is not None and c != ((last + 1) & 0x0F) and c != last:
-                self.cc_errors += 1
-            cc[pid] = c
+    def cc_recent(self, window=60):
+        """Erros de CC no ultimo minuto."""
+        h = list(self.cc_hist)
+        if not h:
+            return 0
+        now = time.time()
+        old = next((v for t, v in h if now - t <= window), h[-1][1])
+        return max(0, h[-1][1] - old)
 
     def start(self):
-        self.thread = threading.Thread(target=self._run, name=self.name, daemon=True)
-        self.thread.start()
+        threading.Thread(target=self._run, name=self.name, daemon=True).start()
         log.info("Captura iniciada %s (%s)", self.name, self.mode)
 
-    def _open(self):
-        joiner = None
-        if is_multicast(self.ip):
-            joiner = MulticastJoiner(self.iface, [self.ip])
-        if self.mode == "socket":
-            s = socket.socket(socket.AF_INET, socket.SOCK_DGRAM)
-            s.setsockopt(socket.SOL_SOCKET, socket.SO_REUSEADDR, 1)
+    def stop(self):
+        super().stop()
+        p = self.proc
+        if p:
             try:
-                s.setsockopt(socket.SOL_SOCKET, SO_RCVBUFFORCE, 8 * 1024 * 1024)
-            except OSError:
+                p.terminate()
+            except Exception:
                 pass
-            s.bind((self.ip if is_multicast(self.ip) else "", self.port))
-            if joiner:
-                joiner.close()
-                mreq = struct.pack("4s4si", socket.inet_aton(self.ip), socket.inet_aton("0.0.0.0"),
-                                   socket.if_nametoindex(self.iface))
-                s.setsockopt(socket.IPPROTO_IP, socket.IP_ADD_MEMBERSHIP, mreq)
-                joiner = None
-        else:
-            s = open_packet_socket(self.iface, self.ip, self.port)
-        s.settimeout(1.0)
-        return s, joiner
+
+    def _stderr(self, proc, base_cc, base_drops):
+        for line in iter(proc.stderr.readline, b""):
+            line = line.decode("utf-8", "replace").strip()
+            if line.startswith("STAT "):
+                try:
+                    _, cc, dr, kind = line.split(" ", 3)
+                    self.cc_errors = base_cc + int(cc)
+                    self.kernel_drops = base_drops + int(dr)
+                    if kind != "-":
+                        self.kind = kind
+                    self.cc_hist.append((time.time(), self.cc_errors))
+                except ValueError:
+                    pass
+            elif line:
+                self.error = line[4:] if line.startswith("ERR ") else line
+                log.error("%s: %s", self.name, self.error)
 
     def _run(self):
         backoff = 1
         while self.running:
+            cmd = [sys.executable, os.path.abspath(__file__), "--capture",
+                   self.iface, self.ip, str(self.port), self.mode]
             try:
-                s, joiner = self._open()
-            except Exception as e:
-                self.error = "Falha ao abrir captura: %s" % e
-                log.error("%s: %s", self.name, self.error)
-                time.sleep(min(backoff, 10))
-                backoff *= 2
+                proc = self.proc = subprocess.Popen(cmd, stdout=subprocess.PIPE,
+                                                    stderr=subprocess.PIPE, bufsize=0)
+            except OSError as e:
+                self.error = "Falha ao iniciar captura: %s" % e
+                time.sleep(5)
                 continue
-            backoff = 1
-            raw = self.mode != "socket"
-            try:
-                while self.running:
-                    try:
-                        if raw:
-                            d, addr = s.recvfrom(65535)
-                            if addr[2] == PACKET_OUTGOING:
-                                continue
-                            u = parse_udp(d)
-                            if not u or u[1] != self.ip or u[3] != self.port:
-                                continue
-                            payload = u[4]
-                        else:
-                            payload = s.recv(65535)
-                    except socket.timeout:
-                        self.stats_tick()
-                        continue
-                    ts, kind = extract_ts(payload)
-                    if ts:
-                        self.kind = kind
-                        self.check_cc(ts)
-                        self.publish(ts)
-                    self.stats_tick()
-            except Exception as e:
-                self.error = str(e)
-                log.error("%s: %s", self.name, e)
-                time.sleep(1)
-            finally:
+            threading.Thread(target=self._stderr, args=(proc, self.cc_errors, self.kernel_drops),
+                             daemon=True).start()
+            fd = proc.stdout.fileno()
+            got = False
+            while self.running:
                 try:
-                    s.close()
+                    d = os.read(fd, 262144)
                 except OSError:
+                    break
+                if not d:
+                    break
+                got = True
+                self.publish(d)
+                self.stats_tick()
+            try:
+                proc.terminate()
+                proc.wait(timeout=3)
+            except Exception:
+                try:
+                    proc.kill()
+                except Exception:
                     pass
-                if joiner:
-                    joiner.close()
+            self.proc = None
+            if self.running:
+                backoff = 1 if got else min(backoff * 2, 10)
+                time.sleep(backoff)
         self.bitrate = 0
         log.info("Captura parada %s", self.name)
 
@@ -1239,6 +1344,8 @@ class Runtime:
             st["hls_error"] = hls[1].error
         st["clients"] = self.channel_clients(ch)
         st["cc_errors"] = src.cc_errors if src else 0
+        st["cc_recent"] = src.cc_recent() if src and src.running else 0
+        st["drops"] = src.kernel_drops if src else 0
         st["history"] = [b for _, b in list(src.history)[-60:]] if src else []
         st["uptime"] = (time.time() - src.started) if src and src.running and getattr(src, "started", 0) else 0
         return st
@@ -1916,4 +2023,7 @@ def main():
 
 
 if __name__ == "__main__":
-    main()
+    if len(sys.argv) >= 6 and sys.argv[1] == "--capture":
+        capture_worker(*sys.argv[2:6])
+    else:
+        main()

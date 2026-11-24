@@ -282,7 +282,7 @@ video{width:100%;border-radius:10px;background:#000;aspect-ratio:16/9;display:bl
         <div class="card kpi"><div class="ic green"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><rect x="2" y="7" width="20" height="14" rx="2"/><path d="m17 2-5 5-5-5"/></svg></div><div><div class="l">Canais no ar</div><div class="v" id="kOn">0</div><div class="s" id="kOnS">de 0 cadastrados</div></div></div>
         <div class="card kpi"><div class="ic blue"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M22 12h-4l-3 9L9 3l-3 9H2"/></svg></div><div><div class="l">Banda de entrada</div><div class="v" id="kBr">0</div><div class="s">streams UDP capturados</div></div></div>
         <div class="card kpi"><div class="ic cyan"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M1 12s4-8 11-8 11 8 11 8-4 8-11 8-11-8-11-8z"/><circle cx="12" cy="12" r="3"/></svg></div><div><div class="l">Espectadores</div><div class="v" id="kCl">0</div><div class="s" id="kOut">saída 0</div></div></div>
-        <div class="card kpi"><div class="ic amber"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M10.29 3.86 1.82 18a2 2 0 0 0 1.71 3h16.94a2 2 0 0 0 1.71-3L13.71 3.86a2 2 0 0 0-3.42 0z"/><path d="M12 9v4M12 17h.01"/></svg></div><div><div class="l">Erros de continuidade</div><div class="v" id="kCc">0</div><div class="s">perda de pacotes (CC)</div></div></div>
+        <div class="card kpi"><div class="ic amber"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M10.29 3.86 1.82 18a2 2 0 0 0 1.71 3h16.94a2 2 0 0 0 1.71-3L13.71 3.86a2 2 0 0 0-3.42 0z"/><path d="M12 9v4M12 17h.01"/></svg></div><div><div class="l">Erros de CC (último minuto)</div><div class="v" id="kCc">0</div><div class="s" id="kCcS">perda de pacotes</div></div></div>
       </div>
       <div class="grid g-main" style="margin-bottom:16px">
         <div class="card"><div class="card-h"><h3>Tráfego de entrada</h3><span class="dim" style="font-size:12px">últimos 2 minutos</span></div><div class="card-b" style="padding:10px 14px 6px"><div id="bigChart" style="height:210px"></div></div></div>
@@ -545,7 +545,8 @@ function renderDash(chs,on){
   $('kOn').textContent=on.length; $('kOnS').textContent='de '+chs.length+' cadastrado'+(chs.length===1?'':'s');
   $('kBr').textContent=br(totalHist[totalHist.length-1]);
   $('kCl').textContent=CLIENTS.length; $('kOut').textContent='saída '+br(CLIENTS.reduce((a,c)=>a+(c.rate||0),0));
-  $('kCc').textContent=chs.reduce((a,c)=>a+(c.status.cc_errors||0),0);
+  $('kCc').textContent=chs.reduce((a,c)=>a+(c.status.cc_recent||0),0);
+  const drp=chs.reduce((a,c)=>a+(c.status.drops||0),0); $('kCcS').textContent = drp ? ('perdas no servidor: '+drp) : 'nenhuma perda no servidor';
   areaChart($('bigChart'),totalHist);
   if(SYS){
     const mp=100*SYS.mem_used/(SYS.mem_total||1), dp=100*SYS.disk_used/(SYS.disk_total||1);
@@ -597,7 +598,7 @@ function renderChannels(){
     <td class="mono muted hide-m">${esc(c.udp_ip)}:${c.udp_port}<div class="dim">${esc(c.iface)} · ${c.capture==='socket'?'socket':'passivo'}</div></td>
     <td>${stateBadge(c)}${c.status.error?`<div class="hint" style="color:#f87171;max-width:200px">${esc(c.status.error).slice(0,90)}</div>`:''}</td>
     <td class="hide-m"><span class="mono">${br(c.status.bitrate)}</span><div>${spark(c.status.history,90,22)}</div></td>
-    <td class="hide-m">${c.status.state==='ativo'?(c.status.cc_errors?`<span class="badge warn">${c.status.cc_errors} erros CC</span>`:'<span class="badge ok">Perfeito</span>'):'<span class="dim">—</span>'}<div class="dim" style="font-size:11.5px;margin-top:3px">👁 ${c.status.clients} espect.</div></td>
+    <td class="hide-m">${c.status.state==='ativo'?(c.status.cc_recent?`<span class="badge warn" title="Pacotes perdidos no último minuto. Total desde que ligou: ${c.status.cc_errors}">${c.status.cc_recent} erros/min</span>`:'<span class="badge ok">Perfeito</span>'):'<span class="dim">—</span>'}${c.status.drops?`<div class="hint" style="color:#f87171">perdas no servidor: ${c.status.drops}</div>`:''}<div class="dim" style="font-size:11.5px;margin-top:3px">👁 ${c.status.clients} espect.</div></td>
     <td><div class="row" style="gap:5px;flex-wrap:nowrap"><button class="btn sm" data-link="${esc(u.hls)}">m3u8</button><button class="btn sm" data-link="${esc(u.ts)}">ts</button></div></td>
     <td><div class="row" style="gap:5px;justify-content:flex-end;flex-wrap:nowrap"><label class="switch" title="Habilitar/desabilitar"><input type="checkbox" ${c.enabled?'checked':''} onchange="toggleCh('${c.id}')"><span></span></label>
       <button class="btn sm" onclick="preview('${c.id}')" title="Assistir">▶</button><button class="btn sm" onclick="probe('${c.id}')" title="Analisar sinal">ⓘ</button><button class="btn sm" onclick="openChannel('${c.id}')">Editar</button><button class="btn sm danger" onclick="delChannel('${c.id}')" title="Remover">✕</button></div></td></tr>`; }).join('')+'</tbody></table>';
