@@ -407,6 +407,10 @@ video{width:100%;border-radius:10px;background:#000;aspect-ratio:16/9;display:bl
       <label class="f"><span>Limite de espectadores</span><input type="number" id="cMax" min="0" placeholder="0 = ilimitado"></label>
     </div>
     <label class="f"><span>URL do logo (opcional, aparece na lista M3U)</span><input type="text" id="cLogo" placeholder="https://…/logo.png"></label>
+    <div class="grid g2">
+      <label class="f"><span>Áudio (todos os links)</span><select id="cAud"><option value="aac">AAC — padrão (som estável em qualquer player)</option><option value="copy">Original do modulador (sem conversão)</option></select></label>
+      <label class="f"><span>Faixa de áudio</span><select id="cTrk"><option value="0">1ª faixa (principal)</option><option value="1">2ª faixa (ex.: SAP/inglês)</option><option value="2">3ª faixa</option><option value="-1">Todas as faixas</option></select></label>
+    </div>
     <label class="f"><span>Modo de captura</span><select id="cCap"><option value="raw">Passivo — recomendado (não ocupa a porta, convive com o Flussonic)</option><option value="socket">Socket UDP tradicional</option></select></label>
     <label class="check"><input type="checkbox" id="cTrans"><div>Transcodificar HLS para H.264/AAC<small>Para fontes MPEG-2 que não abrem no celular/navegador. Usa CPU.</small></div></label>
     <label class="check"><input type="checkbox" id="cAlways"><div>Captura sempre ativa<small>O sinal fica pronto instantaneamente para o primeiro espectador.</small></div></label>
@@ -587,7 +591,7 @@ function renderChannels(){
   if(!chs.length){ $('chTable').innerHTML='<div class="empty">Nenhum canal neste filtro.</div>'; return; }
   const ids=ST.channels.map(c=>c.id);
   $('chTable').innerHTML='<table><thead><tr><th style="width:30px"></th><th>Canal</th><th class="hide-m">Origem</th><th>Status</th><th class="hide-m">Bitrate</th><th class="hide-m">Sinal</th><th>Links</th><th style="text-align:right">Ações</th></tr></thead><tbody>'+chs.map(c=>{ const u=urls(c), idx=ids.indexOf(c.id);
-    const tags=[c.group?esc(c.group):'', c.program?'prog. '+c.program:'', c.transcode?'transcodifica':'', c.always_on?'sempre ativo':'', c.max_clients?'máx '+c.max_clients:''].filter(Boolean).join(' · ');
+    const tags=[c.group?esc(c.group):'', c.program?'prog. '+c.program:'', c.audio_mode==='copy'?'áudio original':'AAC', c.transcode?'transcodifica':'', c.always_on?'sempre ativo':'', c.max_clients?'máx '+c.max_clients:''].filter(Boolean).join(' · ');
     return `<tr><td><div style="display:flex;flex-direction:column;gap:2px"><button class="icon-btn" style="width:22px;height:18px;border:0" ${idx===0?'disabled':''} onclick="move('${c.id}',-1)" title="Subir">▲</button><button class="icon-btn" style="width:22px;height:18px;border:0" ${idx===ids.length-1?'disabled':''} onclick="move('${c.id}',1)" title="Descer">▼</button></div></td>
     <td><div style="display:flex;gap:11px;align-items:center"><div class="mini-thumb" ${c.status.state==='ativo'?`style="background-image:url('${thumbUrl(c)}')"`:''}></div><div><b>${esc(c.name)}</b><div class="dim" style="font-size:11.5px">${tags||'&nbsp;'}</div></div></div></td>
     <td class="mono muted hide-m">${esc(c.udp_ip)}:${c.udp_port}<div class="dim">${esc(c.iface)} · ${c.capture==='socket'?'socket':'passivo'}</div></td>
@@ -606,13 +610,13 @@ function openChannel(id,preset){
   $('mChTitle').textContent=id?'Editar canal':'Novo canal';
   $('cId').value=id||''; $('cName').value=c.name||''; $('cIp').value=c.udp_ip||''; $('cPort').value=c.udp_port||'';
   $('cProg').value=c.program||''; $('cGroup').value=c.group||''; $('cSlug').value=id?(c.slug||''):''; $('cLogo').value=c.logo||''; $('cMax').value=c.max_clients||''; $('cNotes').value=c.notes||'';
-  $('cCap').value=c.capture||'raw'; $('cTrans').checked=!!c.transcode; $('cAlways').checked=!!c.always_on; $('cHlsAlways').checked=!!c.hls_always; $('cEn').checked=c.enabled!==false;
+  $('cCap').value=c.capture||'raw'; $('cAud').value=c.audio_mode||'aac'; $('cTrk').value=String(c.audio_track??0); $('cTrans').checked=!!c.transcode; $('cAlways').checked=!!c.always_on; $('cHlsAlways').checked=!!c.hls_always; $('cEn').checked=c.enabled!==false;
   $('groupList').innerHTML=[...new Set(ST.channels.map(x=>x.group).filter(Boolean))].map(g=>`<option value="${esc(g)}">`).join('');
   fillIfaceSelect(c.iface||selIface); $('mCh').classList.remove('hidden'); $('cName').focus();
 }
 function closeM(id){ $(id).classList.add('hidden'); }
 $('chForm').onsubmit=async e=>{ e.preventDefault();
-  const body={name:$('cName').value,udp_ip:$('cIp').value.trim(),udp_port:+$('cPort').value,iface:$('cIface').value,program:$('cProg').value,group:$('cGroup').value,slug:$('cSlug').value,logo:$('cLogo').value,capture:$('cCap').value,transcode:$('cTrans').checked,always_on:$('cAlways').checked,hls_always:$('cHlsAlways').checked,enabled:$('cEn').checked,max_clients:+$('cMax').value||0,notes:$('cNotes').value};
+  const body={name:$('cName').value,udp_ip:$('cIp').value.trim(),udp_port:+$('cPort').value,iface:$('cIface').value,program:$('cProg').value,group:$('cGroup').value,slug:$('cSlug').value,logo:$('cLogo').value,capture:$('cCap').value,transcode:$('cTrans').checked,always_on:$('cAlways').checked,hls_always:$('cHlsAlways').checked,enabled:$('cEn').checked,max_clients:+$('cMax').value||0,audio_mode:$('cAud').value,audio_track:+$('cTrk').value,notes:$('cNotes').value};
   try{ const id=$('cId').value; if(id) await api('channels/'+id,{method:'PUT',body}); else await api('channels',{method:'POST',body}); toast('Canal salvo com sucesso','ok'); closeM('mCh'); await refresh(); }catch(err){ toast(err.message,'err'); } };
 async function delChannel(id){ const c=ST.channels.find(x=>x.id===id); if(!confirm('Remover o canal "'+c.name+'"?\nOs links dele deixarão de funcionar.')) return; try{ await api('channels/'+id,{method:'DELETE'}); toast('Canal removido','ok'); refresh(); }catch(err){ toast(err.message,'err'); } }
 

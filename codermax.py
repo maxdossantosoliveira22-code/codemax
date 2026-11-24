@@ -41,7 +41,7 @@ import unicodedata
 from http.server import BaseHTTPRequestHandler, ThreadingHTTPServer
 from urllib.parse import parse_qs, urlparse
 
-VERSION = "1.2.0"
+VERSION = "1.3.0"
 APP = "Codermax"
 
 BASE_DIR = os.path.dirname(os.path.abspath(__file__))
@@ -608,7 +608,8 @@ def run_scan(iface, duration=8, groups_spec="", promisc=False, probe=True, show_
 
 class Subscriber:
     def __init__(self, kind="client", info=""):
-        self.q = queue.Queue(maxsize=3000)
+        # filas generosas: perda de pacote = som/imagem travando
+        self.q = queue.Queue(maxsize=8000 if kind == "client" else 30000)
         self.id = secrets.token_hex(4)
         self.kind = kind
         self.info = info if isinstance(info, dict) else {"desc": info}
@@ -622,8 +623,11 @@ class Subscriber:
             self.q.put_nowait(data)
         except queue.Full:
             self.dropped += 1
-            if self.dropped > 2000 and self.kind == "client":
-                self.closed = True  # cliente lento demais
+            if self.kind == "client" and self.dropped > 4000:
+                self.closed = True  # cliente lento demais (internet dele nao acompanha)
+            elif self.kind == "internal" and self.dropped % 500 == 1:
+                log.warning("Fila interna cheia (%s): %d pacotes descartados - CPU sobrecarregada?",
+                            self.info.get("desc", "?"), self.dropped)
 
     def read(self, timeout=5, maxbytes=128 * 1024):
         chunk = self.q.get(timeout=timeout)
@@ -932,6 +936,16 @@ class FFmpegPipe(Hub):
         self.proc = None
 
 
+AUDIO_AAC = ["-c:a", "aac", "-b:a", "128k", "-ac", "2", "-ar", "48000",
+             "-af", "aresample=async=1000"]
+
+
+def audio_map(ch, prefix="0"):
+    """Mapeia a faixa de audio escolhida (-1 = todas)."""
+    tr = int(ch.get("audio_track", 0) or 0)
+    return ["-map", "%s:a?" % prefix] if tr < 0 else ["-map", "%s:a:%d?" % (prefix, tr)]
+
+
 class HlsWorker(FFmpegPipe):
     def __init__(self, ch, upstream, cfg):
         self.dir = os.path.join(HLS_ROOT, ch["id"])
@@ -939,17 +953,21 @@ class HlsWorker(FFmpegPipe):
         self.viewers = {}  # ip -> info
         args = ["-fflags", "+genpts+discardcorrupt", "-err_detect", "ignore_err",
                 "-analyzeduration", "2000000", "-probesize", "3000000",
-                "-f", "mpegts", "-i", "pipe:0",
-                "-map", "0:v:0?", "-map", "0:a?"]
+                "-thread_queue_size", "4096", "-f", "mpegts", "-i", "pipe:0",
+                "-map", "0:v:0?"]
+        aac_upstream = ch.get("audio_mode", "aac") != "copy"
+        # com AAC o hub do canal ja entrega 1 faixa pronta; o HLS so copia
+        args += ["-map", "0:a?"] if aac_upstream else audio_map(ch)
         if ch.get("transcode"):
             args += ["-c:v", "libx264", "-preset", "veryfast", "-profile:v", "main",
                      "-vf", "yadif=0:-1:1,scale=-2:'min(ih,1080)'",
                      "-b:v", cfg.get("transcode_bitrate", "3000k"),
                      "-maxrate", cfg.get("transcode_bitrate", "3000k"),
-                     "-bufsize", "6M", "-g", "50", "-sc_threshold", "0",
-                     "-c:a", "aac", "-b:a", "128k", "-ac", "2"]
+                     "-bufsize", "6M", "-g", "50", "-sc_threshold", "0"] + AUDIO_AAC
         else:
-            args += ["-c", "copy"]
+            args += ["-c:v", "copy"]
+            args += ["-c:a", "copy"]
+        args += ["-max_muxing_queue_size", "4096"]
         args += ["-f", "hls", "-hls_time", str(cfg.get("hls_time", 4)),
                  "-hls_list_size", str(cfg.get("hls_list_size", 6)),
                  "-hls_flags", "delete_segments+omit_endlist+temp_file+independent_segments",
@@ -1008,27 +1026,36 @@ class Runtime:
     def ts_hub(self, ch):
         src = self.source_for(ch)
         prog = ch.get("program")
-        if prog in (None, "", 0):
+        fix = ch.get("audio_mode", "aac") != "copy"   # padrao: AAC em todos os links
+        if prog in (None, "", 0) and not fix:
             return src
-        sig = (src.name, int(prog))
+        sig = (src.name, prog, fix, ch.get("audio_track", 0))
         with self.lock:
             cur = self.filters.get(ch["id"])
             if cur and cur[0] == sig:
                 return cur[1]
             if cur:
                 cur[1].stop()
-            args = ["-fflags", "+genpts+discardcorrupt+nobuffer", "-analyzeduration", "1500000",
-                    "-probesize", "2000000", "-f", "mpegts", "-i", "pipe:0",
-                    "-map", "0:p:%d?" % int(prog), "-c", "copy", "-flush_packets", "1",
+            args = ["-fflags", "+genpts+discardcorrupt+nobuffer", "-analyzeduration", "1000000",
+                    "-probesize", "1500000", "-thread_queue_size", "4096",
+                    "-f", "mpegts", "-i", "pipe:0"]
+            pfx = "0:p:%d" % int(prog) if prog not in (None, "", 0) else "0"
+            if fix:
+                args += ["-map", pfx + ":v:0?"] + audio_map(ch, pfx) + ["-c:v", "copy"] + AUDIO_AAC
+            else:
+                args += ["-map", pfx + "?", "-c", "copy"]
+            args += ["-max_muxing_queue_size", "4096", "-flush_packets", "1",
+                    "-muxdelay", "0", "-muxpreload", "0",
                     "-f", "mpegts", "-mpegts_flags", "+resend_headers",
                     "-metadata", "service_name=%s" % ch["name"], "pipe:1"]
-            hub = FFmpegPipe("prog%s:%s" % (prog, ch["slug"]), src, args)
+            hub = FFmpegPipe("%s:%s" % ("prog%s" % prog if prog else "audiofix", ch["slug"]), src, args)
             self.filters[ch["id"]] = (sig, hub)
             return hub
 
     def hls_for(self, ch):
         hub = self.ts_hub(ch)
-        sig = (id(hub), bool(ch.get("transcode")), self.cfg.get("hls_time"),
+        sig = (id(hub), bool(ch.get("transcode")), ch.get("audio_mode", "aac"),
+               ch.get("audio_track", 0), self.cfg.get("hls_time"),
                self.cfg.get("hls_list_size"), self.cfg.get("transcode_bitrate"))
         with self.lock:
             cur = self.hls.get(ch["id"])
@@ -1358,6 +1385,10 @@ def new_channel_from(data, existing=None):
         "hls_always": bool(data.get("hls_always", ch.get("hls_always", False))),
         "enabled": bool(data.get("enabled", ch.get("enabled", True))),
         "max_clients": max(0, int(data.get("max_clients", ch.get("max_clients", 0)) or 0)),
+        "audio_mode": data.get("audio_mode", ch.get("audio_mode", "aac")) if
+        data.get("audio_mode", ch.get("audio_mode", "aac")) in ("aac", "copy") else "aac",
+        "audio_track": max(-1, min(int(data.get("audio_track", ch.get("audio_track", 0)) or 0), 15)),
+
         "notes": (data.get("notes", ch.get("notes", "")) or "").strip()[:300],
         "created": ch.get("created") or time.time(),
     })
