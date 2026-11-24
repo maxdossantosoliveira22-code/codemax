@@ -1,0 +1,742 @@
+<!doctype html>
+<html lang="pt-BR">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Codermax · Painel</title>
+<link rel="icon" href="/static/favicon.svg" type="image/svg+xml">
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800&family=JetBrains+Mono:wght@400;500&display=swap" rel="stylesheet">
+<style>
+:root{
+  --bg:#070b14; --bg2:#0c1220; --panel:#0f1726; --panel2:#131d30; --line:#1e2a40; --line2:#2a3852;
+  --text:#e6ebf5; --muted:#8391ab; --dim:#5b6883;
+  --a1:#2563eb; --a2:#0891b2; --a3:#14b8a6; --grad:linear-gradient(135deg,#2563eb,#0891b2 55%,#14b8a6);
+  --ok:#10b981; --warn:#f59e0b; --bad:#ef4444; --r:12px;
+  --mono:"JetBrains Mono",ui-monospace,SFMono-Regular,Menlo,Consolas,monospace;
+}
+*{box-sizing:border-box}
+html,body{margin:0;height:100%}
+body{background:var(--bg);color:var(--text);font:13.5px/1.5 Inter,system-ui,-apple-system,"Segoe UI",Roboto,Ubuntu,sans-serif;-webkit-font-smoothing:antialiased}
+a{color:#38bdf8;text-decoration:none} a:hover{text-decoration:underline}
+button,input,select,textarea{font:inherit;color:inherit}
+.hidden{display:none!important}
+::-webkit-scrollbar{width:10px;height:10px} ::-webkit-scrollbar-thumb{background:var(--line2);border-radius:10px;border:2px solid var(--bg)}
+
+/* ===== layout ===== */
+.app{display:grid;grid-template-columns:250px 1fr;min-height:100vh}
+aside{background:var(--bg2);border-right:1px solid var(--line);display:flex;flex-direction:column;position:sticky;top:0;height:100vh;z-index:40}
+.brand{padding:20px 20px 18px;border-bottom:1px solid var(--line)}
+.navs{padding:14px 12px;display:flex;flex-direction:column;gap:2px;overflow:auto;flex:1}
+.sec{font-size:10.5px;font-weight:600;letter-spacing:1.2px;color:var(--dim);padding:14px 10px 6px;text-transform:uppercase}
+.nav{display:flex;align-items:center;gap:11px;padding:9px 11px;border-radius:9px;color:var(--muted);cursor:pointer;border:0;background:none;text-align:left;width:100%;font-weight:500;position:relative}
+.nav:hover{background:var(--panel);color:var(--text)}
+.nav.active{background:var(--panel2);color:#fff}
+.nav.active::before{content:"";position:absolute;left:-12px;top:8px;bottom:8px;width:3px;border-radius:0 3px 3px 0;background:var(--grad)}
+.nav svg{width:17px;height:17px;flex:none;opacity:.9}
+.nav .cnt{margin-left:auto;font-size:11px;background:var(--line);padding:0 7px;border-radius:99px;color:var(--text)}
+.side-foot{border-top:1px solid var(--line);padding:14px 16px;display:flex;align-items:center;gap:10px}
+.avatar{width:32px;height:32px;border-radius:50%;background:var(--grad);display:flex;align-items:center;justify-content:center;font-weight:700;font-size:13px}
+.side-foot .who{flex:1;min-width:0;font-size:12.5px} .side-foot .who small{display:block;color:var(--dim)}
+.icon-btn{background:none;border:1px solid var(--line);border-radius:8px;width:32px;height:32px;display:inline-flex;align-items:center;justify-content:center;cursor:pointer;color:var(--muted)}
+.icon-btn:hover{color:var(--text);border-color:var(--line2)} .icon-btn svg{width:16px;height:16px}
+
+.topbar{height:62px;border-bottom:1px solid var(--line);display:flex;align-items:center;gap:14px;padding:0 28px;position:sticky;top:0;background:rgba(7,11,20,.85);backdrop-filter:blur(10px);z-index:30}
+.topbar h1{font-size:16px;margin:0;font-weight:600}
+.crumb{color:var(--dim);font-size:12.5px}
+.topbar .sp{flex:1}
+.pill{display:inline-flex;align-items:center;gap:7px;border:1px solid var(--line);border-radius:99px;padding:5px 11px;font-size:12px;color:var(--muted);background:var(--bg2);white-space:nowrap}
+main{min-width:0}
+.content{padding:24px 28px 60px;max-width:1400px}
+.page-head{display:flex;justify-content:space-between;align-items:flex-end;gap:12px;margin-bottom:18px;flex-wrap:wrap}
+.page-head h2{margin:0;font-size:22px;font-weight:700;letter-spacing:-.3px}
+.page-head p{margin:3px 0 0;color:var(--muted)}
+
+/* ===== componentes ===== */
+.card{background:var(--panel);border:1px solid var(--line);border-radius:var(--r)}
+.card-h{display:flex;align-items:center;justify-content:space-between;gap:10px;padding:14px 18px;border-bottom:1px solid var(--line)}
+.card-h h3{margin:0;font-size:13.5px;font-weight:600}
+.card-b{padding:18px}
+.grid{display:grid;gap:16px}
+.g4{grid-template-columns:repeat(4,minmax(0,1fr))} .g3{grid-template-columns:repeat(3,minmax(0,1fr))} .g2{grid-template-columns:repeat(2,minmax(0,1fr))}
+.g-main{grid-template-columns:minmax(0,2fr) minmax(0,1fr)}
+.kpi{padding:16px 18px;display:flex;gap:14px;align-items:flex-start}
+.kpi .ic{width:40px;height:40px;border-radius:10px;display:flex;align-items:center;justify-content:center;flex:none}
+.kpi .ic svg{width:20px;height:20px}
+.kpi .l{color:var(--muted);font-size:12px;font-weight:500}
+.kpi .v{font-size:24px;font-weight:700;letter-spacing:-.5px;line-height:1.2;margin-top:2px}
+.kpi .s{font-size:11.5px;color:var(--dim);margin-top:2px}
+.ic.blue{background:rgba(37,99,235,.14);color:#60a5fa} .ic.cyan{background:rgba(8,145,178,.15);color:#22d3ee} .ic.green{background:rgba(16,185,129,.14);color:#34d399} .ic.amber{background:rgba(245,158,11,.14);color:#fbbf24}
+.btn{display:inline-flex;align-items:center;gap:7px;border:1px solid var(--line2);background:var(--panel2);padding:8px 14px;border-radius:9px;cursor:pointer;white-space:nowrap;font-weight:500;font-size:13px;transition:.15s}
+.btn:hover{border-color:#3b4b6b;background:#17223a}
+.btn.primary{background:var(--grad);border-color:transparent;color:#fff;box-shadow:0 6px 18px -6px rgba(8,145,178,.6)}
+.btn.primary:hover{filter:brightness(1.1)}
+.btn.ghost{background:none}
+.btn.danger:hover{border-color:var(--bad);color:#fca5a5}
+.btn.sm{padding:5px 10px;font-size:12px;border-radius:7px}
+.btn:disabled{opacity:.5;cursor:not-allowed}
+.btn svg{width:15px;height:15px}
+label.f{display:block;margin-bottom:14px}
+label.f>span{display:block;color:var(--muted);font-size:12px;font-weight:500;margin-bottom:6px}
+input[type=text],input[type=password],input[type=number],input[type=search],select,textarea{width:100%;background:var(--bg2);border:1px solid var(--line2);border-radius:9px;padding:9px 12px;outline:none;transition:.15s}
+input:focus,select:focus,textarea:focus{border-color:var(--a2);box-shadow:0 0 0 3px rgba(8,145,178,.18)}
+.check{display:flex;align-items:flex-start;gap:10px;margin:10px 0;cursor:pointer}
+.check input{width:16px;height:16px;accent-color:var(--a2);margin-top:2px;flex:none}
+.check small{display:block;color:var(--dim)}
+.hint{color:var(--dim);font-size:12px;margin-top:5px}
+.row{display:flex;gap:10px;align-items:center;flex-wrap:wrap}
+.badge{display:inline-flex;align-items:center;gap:6px;font-size:11px;font-weight:600;padding:3px 9px;border-radius:6px;background:var(--panel2);border:1px solid var(--line2);color:var(--muted);white-space:nowrap;letter-spacing:.2px}
+.badge.ok{color:#34d399;border-color:rgba(16,185,129,.35);background:rgba(16,185,129,.1)}
+.badge.warn{color:#fbbf24;border-color:rgba(245,158,11,.35);background:rgba(245,158,11,.1)}
+.badge.bad{color:#f87171;border-color:rgba(239,68,68,.35);background:rgba(239,68,68,.1)}
+.badge.info{color:#22d3ee;border-color:rgba(8,145,178,.35);background:rgba(8,145,178,.1)}
+.badge.live{background:#dc2626;border-color:#dc2626;color:#fff}
+.dot{width:8px;height:8px;border-radius:50%;background:var(--dim);display:inline-block;flex:none}
+.dot.ok{background:var(--ok);box-shadow:0 0 0 3px rgba(16,185,129,.2);animation:pulse 2s infinite}
+.dot.warn{background:var(--warn)} .dot.bad{background:var(--bad)}
+@keyframes pulse{50%{box-shadow:0 0 0 6px rgba(16,185,129,0)}}
+table{width:100%;border-collapse:collapse}
+th{text-align:left;color:var(--dim);font-weight:600;font-size:11px;text-transform:uppercase;letter-spacing:.7px;padding:10px 14px;border-bottom:1px solid var(--line);white-space:nowrap}
+td{padding:12px 14px;border-bottom:1px solid var(--line);vertical-align:middle}
+tbody tr:hover td{background:rgba(255,255,255,.015)}
+tr:last-child td{border-bottom:0}
+.mono{font-family:var(--mono);font-size:12px}
+.muted{color:var(--muted)} .dim{color:var(--dim)}
+.empty{text-align:center;padding:48px 16px;color:var(--muted)}
+.empty .em-ic{width:54px;height:54px;border-radius:14px;background:var(--panel2);display:flex;align-items:center;justify-content:center;margin:0 auto 14px;color:var(--a2)}
+.empty .em-ic svg{width:26px;height:26px}
+.empty b{display:block;color:var(--text);font-size:15px;margin-bottom:4px}
+.linkbox{display:flex;gap:8px;align-items:center;background:var(--bg2);border:1px solid var(--line2);border-radius:9px;padding:5px 5px 5px 12px}
+.linkbox code{flex:1;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;font-family:var(--mono);font-size:12px;color:#93c5fd}
+.progress{height:6px;background:var(--bg2);border-radius:99px;overflow:hidden}
+.progress>div{height:100%;width:0;background:var(--grad);transition:width .4s}
+.toolbar{display:flex;gap:10px;align-items:center;flex-wrap:wrap;padding:12px 14px;border-bottom:1px solid var(--line)}
+.search{position:relative;flex:1;min-width:200px;max-width:340px}
+.search svg{position:absolute;left:11px;top:50%;transform:translateY(-50%);width:15px;height:15px;color:var(--dim)}
+.search input{padding-left:34px}
+.switch{position:relative;width:34px;height:19px;flex:none;cursor:pointer}
+.switch input{opacity:0;width:0;height:0}
+.switch span{position:absolute;inset:0;background:var(--line2);border-radius:99px;transition:.2s}
+.switch span::after{content:"";position:absolute;left:2px;top:2px;width:15px;height:15px;border-radius:50%;background:#fff;transition:.2s}
+.switch input:checked+span{background:var(--a2)} .switch input:checked+span::after{left:17px}
+.tabs{display:flex;gap:4px;background:var(--bg2);border:1px solid var(--line);border-radius:10px;padding:3px}
+.tabs button{background:none;border:0;padding:6px 12px;border-radius:7px;cursor:pointer;color:var(--muted);font-weight:500;font-size:12.5px}
+.tabs button.on{background:var(--panel2);color:var(--text)}
+
+/* mosaico */
+.mosaic{display:grid;grid-template-columns:repeat(auto-fill,minmax(230px,1fr));gap:14px}
+.tile{background:var(--panel2);border:1px solid var(--line);border-radius:11px;overflow:hidden;cursor:pointer;transition:.15s}
+.tile:hover{border-color:var(--line2);transform:translateY(-2px)}
+.thumb{aspect-ratio:16/9;background:#05080f center/cover no-repeat;position:relative;display:flex;align-items:center;justify-content:center;color:var(--dim)}
+.thumb .st{position:absolute;left:8px;top:8px}
+.thumb .br{position:absolute;right:8px;bottom:8px;font-family:var(--mono);font-size:11px;background:rgba(0,0,0,.65);padding:2px 7px;border-radius:5px;color:#fff}
+.thumb .play{width:44px;height:44px;border-radius:50%;background:rgba(0,0,0,.55);display:flex;align-items:center;justify-content:center;opacity:0;transition:.15s;color:#fff}
+.tile:hover .play{opacity:1}
+.thumb .ph{display:flex;flex-direction:column;align-items:center;gap:6px;font-size:11.5px}
+.thumb .ph svg{width:26px;height:26px;opacity:.6}
+.tile .meta{padding:10px 12px;display:flex;justify-content:space-between;align-items:center;gap:8px}
+.tile .meta b{font-size:13px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
+.mini-thumb{width:64px;height:36px;border-radius:5px;background:#05080f center/cover no-repeat;border:1px solid var(--line);flex:none}
+
+/* gauges */
+.gauge{display:flex;align-items:center;gap:14px;padding:12px 0}
+.gauge+.gauge{border-top:1px solid var(--line)}
+.ring{width:58px;height:58px;flex:none;position:relative}
+.ring svg{transform:rotate(-90deg)}
+.ring b{position:absolute;inset:0;display:flex;align-items:center;justify-content:center;font-size:12.5px}
+.gauge .l{font-weight:600} .gauge .s{color:var(--dim);font-size:12px}
+
+/* scanner */
+.iface-grid{display:grid;grid-template-columns:repeat(auto-fill,minmax(240px,1fr));gap:12px}
+.iface{border:1px solid var(--line2);border-radius:11px;padding:14px;background:var(--bg2);cursor:pointer;transition:.15s;position:relative}
+.iface:hover{border-color:#3b4b6b}
+.iface.sel{border-color:var(--a2);box-shadow:0 0 0 3px rgba(8,145,178,.18)}
+.iface .n{font-weight:600;display:flex;justify-content:space-between;align-items:center;font-size:14px}
+.flow{border:1px solid var(--line);border-radius:11px;background:var(--bg2);margin-bottom:12px;overflow:hidden}
+.flow .top{display:flex;justify-content:space-between;gap:10px;flex-wrap:wrap;align-items:center;padding:13px 15px;background:var(--panel2)}
+.flow .addr{font-family:var(--mono);font-size:14px;font-weight:500}
+.prog{display:flex;justify-content:space-between;align-items:center;gap:10px;padding:11px 15px;border-top:1px solid var(--line);flex-wrap:wrap}
+.chips{display:flex;gap:5px;flex-wrap:wrap;margin-top:5px}
+.chip{font-size:11px;padding:1px 7px;border-radius:5px;background:var(--panel);border:1px solid var(--line2);color:var(--muted);font-family:var(--mono)}
+.chip.v{color:#93c5fd;border-color:rgba(37,99,235,.4)}
+.steps{display:flex;gap:10px;margin-bottom:16px;flex-wrap:wrap}
+.step{display:flex;align-items:center;gap:8px;color:var(--muted);font-size:12.5px}
+.step i{width:22px;height:22px;border-radius:50%;background:var(--panel2);border:1px solid var(--line2);display:inline-flex;align-items:center;justify-content:center;font-style:normal;font-size:11px;font-weight:700}
+.step.on i{background:var(--grad);border:0;color:#fff} .step.on{color:var(--text)}
+input[type=range]{width:100%;accent-color:var(--a2)}
+
+pre.logs{background:#04070d;border:0;border-radius:0 0 var(--r) var(--r);padding:16px;max-height:65vh;overflow:auto;font-family:var(--mono);font-size:12px;margin:0;white-space:pre-wrap;line-height:1.7}
+.lv-WARNING{color:#fbbf24} .lv-ERROR{color:#f87171} .lv-INFO{color:#a5b4cc}
+
+/* modal / toast */
+.modal{position:fixed;inset:0;background:rgba(2,4,10,.72);backdrop-filter:blur(4px);display:flex;align-items:center;justify-content:center;z-index:60;padding:16px}
+.modal .box{background:var(--panel);border:1px solid var(--line2);border-radius:16px;width:100%;max-width:620px;max-height:92vh;overflow:auto;box-shadow:0 30px 80px rgba(0,0,0,.5)}
+.modal .box.wide{max-width:980px}
+.modal .mh{display:flex;justify-content:space-between;align-items:center;padding:16px 20px;border-bottom:1px solid var(--line);position:sticky;top:0;background:var(--panel);z-index:2}
+.modal .mh h2{margin:0;font-size:16px}
+.modal .mb{padding:20px}
+.modal .mf{display:flex;justify-content:flex-end;gap:8px;padding:14px 20px;border-top:1px solid var(--line)}
+#toasts{position:fixed;right:20px;bottom:20px;display:flex;flex-direction:column;gap:8px;z-index:80}
+.toast{background:var(--panel2);border:1px solid var(--line2);padding:11px 15px;border-radius:10px;min-width:260px;box-shadow:0 12px 30px rgba(0,0,0,.45);display:flex;gap:10px;align-items:center;animation:tin .2s}
+.toast::before{content:"";width:8px;height:8px;border-radius:50%;background:var(--a2);flex:none}
+.toast.err::before{background:var(--bad)} .toast.ok::before{background:var(--ok)}
+@keyframes tin{from{transform:translateY(8px);opacity:0}}
+video{width:100%;border-radius:10px;background:#000;aspect-ratio:16/9;display:block}
+
+/* login */
+.login{min-height:100vh;display:grid;grid-template-columns:1.1fr 1fr}
+.login .hero{background:radial-gradient(900px 600px at 0% 0%,rgba(37,99,235,.35),transparent 60%),radial-gradient(700px 500px at 100% 100%,rgba(20,184,166,.25),transparent 60%),#060a13;padding:48px;display:flex;flex-direction:column;justify-content:space-between;border-right:1px solid var(--line);position:relative;overflow:hidden}
+.login .hero::after{content:"";position:absolute;inset:0;background-image:linear-gradient(rgba(255,255,255,.035) 1px,transparent 1px),linear-gradient(90deg,rgba(255,255,255,.035) 1px,transparent 1px);background-size:44px 44px;mask-image:radial-gradient(ellipse at 30% 40%,#000 30%,transparent 75%)}
+.login .hero>*{position:relative;z-index:1}
+.login h1{font-size:38px;line-height:1.15;margin:0 0 14px;letter-spacing:-1px;max-width:480px}
+.login h1 span{background:var(--grad);-webkit-background-clip:text;background-clip:text;color:transparent}
+.feat{display:flex;flex-direction:column;gap:12px;color:var(--muted);max-width:440px}
+.feat div{display:flex;gap:10px;align-items:center}
+.feat svg{width:18px;height:18px;color:#22d3ee;flex:none}
+.login .formside{display:flex;align-items:center;justify-content:center;padding:32px}
+.login form{width:100%;max-width:360px}
+.login form h2{margin:0 0 4px;font-size:22px} .login form p{margin:0 0 26px;color:var(--muted)}
+
+/* mobile */
+.menu-btn{display:none}
+@media (max-width:1100px){ .g4{grid-template-columns:repeat(2,minmax(0,1fr))} .g-main{grid-template-columns:1fr} }
+@media (max-width:860px){
+  .app{grid-template-columns:1fr}
+  aside{position:fixed;left:-270px;width:250px;transition:left .2s}
+  aside.open{left:0;box-shadow:20px 0 60px rgba(0,0,0,.6)}
+  .menu-btn{display:inline-flex}
+  .topbar{padding:0 14px} .content{padding:16px}
+  .g2,.g3{grid-template-columns:1fr}
+  .hide-m{display:none}
+  .login{grid-template-columns:1fr} .login .hero{display:none}
+  .pill.hide-s{display:none}
+}
+</style>
+</head>
+<body>
+
+<!-- ============ LOGIN ============ -->
+<div id="login" class="login hidden">
+  <div class="hero">
+    <div class="logo-slot" data-size="lg"></div>
+    <div>
+      <h1>Seus sinais do modulador, <span>prontos para qualquer tela.</span></h1>
+      <div class="feat">
+        <div><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M20 6 9 17l-5-5"/></svg>Detecção automática de streams UDP multicast e unicast</div>
+        <div><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M20 6 9 17l-5-5"/></svg>Links HLS (.m3u8), MPEG-TS e listas M3U em um clique</div>
+        <div><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M20 6 9 17l-5-5"/></svg>Captura passiva — convive com o Flussonic sem conflito</div>
+        <div><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M20 6 9 17l-5-5"/></svg>Monitoramento de sinal, banda e espectadores em tempo real</div>
+      </div>
+    </div>
+    <div class="dim" style="font-size:12px">© Codermax · Gateway de vídeo IP</div>
+  </div>
+  <div class="formside">
+    <form id="loginForm">
+      <div class="logo-slot" data-size="md" style="margin-bottom:28px"></div>
+      <h2>Acessar painel</h2>
+      <p>Entre com suas credenciais de administrador.</p>
+      <label class="f"><span>Usuário</span><input type="text" id="lu" value="" autocomplete="username"></label>
+      <label class="f"><span>Senha</span><input type="password" id="lp" autocomplete="current-password" autofocus></label>
+      <button class="btn primary" style="width:100%;justify-content:center;padding:11px;margin-top:6px">Entrar</button>
+      <p id="lerr" style="color:#f87171;text-align:center;margin-top:14px"></p>
+    </form>
+  </div>
+</div>
+
+<!-- ============ APP ============ -->
+<div id="app" class="app hidden">
+  <aside id="side">
+    <div class="brand"><div class="logo-slot" data-size="md"></div></div>
+    <nav class="navs">
+      <div class="sec">Operação</div>
+      <button class="nav" data-page="dash"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><rect x="3" y="3" width="7" height="9" rx="1.5"/><rect x="14" y="3" width="7" height="5" rx="1.5"/><rect x="14" y="12" width="7" height="9" rx="1.5"/><rect x="3" y="16" width="7" height="5" rx="1.5"/></svg>Visão geral</button>
+      <button class="nav" data-page="mosaic"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><rect x="2" y="4" width="9" height="7" rx="1.5"/><rect x="13" y="4" width="9" height="7" rx="1.5"/><rect x="2" y="13" width="9" height="7" rx="1.5"/><rect x="13" y="13" width="9" height="7" rx="1.5"/></svg>Mosaico</button>
+      <button class="nav" data-page="channels"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><rect x="2" y="7" width="20" height="14" rx="2"/><path d="m17 2-5 5-5-5"/></svg>Canais<span class="cnt" id="navCh">0</span></button>
+      <button class="nav" data-page="scan"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="12" cy="12" r="2"/><path d="M16.24 7.76a6 6 0 0 1 0 8.49M7.76 16.24a6 6 0 0 1 0-8.49M19.07 4.93a10 10 0 0 1 0 14.14M4.93 19.07a10 10 0 0 1 0-14.14"/></svg>Scanner UDP</button>
+      <button class="nav" data-page="clients"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M17 21v-2a4 4 0 0 0-4-4H5a4 4 0 0 0-4 4v2"/><circle cx="9" cy="7" r="4"/><path d="M23 21v-2a4 4 0 0 0-3-3.87M16 3.13a4 4 0 0 1 0 7.75"/></svg>Conexões<span class="cnt" id="navCl">0</span></button>
+      <button class="nav" data-page="links"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M10 13a5 5 0 0 0 7.54.54l3-3a5 5 0 0 0-7.07-7.07l-1.72 1.71"/><path d="M14 11a5 5 0 0 0-7.54-.54l-3 3a5 5 0 0 0 7.07 7.07l1.71-1.71"/></svg>Links & M3U</button>
+      <div class="sec">Sistema</div>
+      <button class="nav" data-page="settings"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M12 15a3 3 0 1 0 0-6 3 3 0 0 0 0 6Z"/><path d="M19.4 15a1.65 1.65 0 0 0 .33 1.82l.06.06a2 2 0 1 1-2.83 2.83l-.06-.06a1.65 1.65 0 0 0-1.82-.33 1.65 1.65 0 0 0-1 1.51V21a2 2 0 1 1-4 0v-.09a1.65 1.65 0 0 0-1.08-1.51 1.65 1.65 0 0 0-1.82.33l-.06.06a2 2 0 1 1-2.83-2.83l.06-.06A1.65 1.65 0 0 0 4.6 15a1.65 1.65 0 0 0-1.51-1H3a2 2 0 1 1 0-4h.09A1.65 1.65 0 0 0 4.6 9a1.65 1.65 0 0 0-.33-1.82l-.06-.06a2 2 0 1 1 2.83-2.83l.06.06A1.65 1.65 0 0 0 9 4.6a1.65 1.65 0 0 0 1-1.51V3a2 2 0 1 1 4 0v.09a1.65 1.65 0 0 0 1 1.51 1.65 1.65 0 0 0 1.82-.33l.06-.06a2 2 0 1 1 2.83 2.83l-.06.06A1.65 1.65 0 0 0 19.4 9c.14.4.5.7.93.8H21a2 2 0 1 1 0 4h-.09a1.65 1.65 0 0 0-1.51 1Z"/></svg>Configurações</button>
+      <button class="nav" data-page="logs"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"/><path d="M14 2v6h6M16 13H8M16 17H8M10 9H8"/></svg>Logs do sistema</button>
+    </nav>
+    <div class="side-foot"><div class="avatar" id="avatar">A</div><div class="who"><b id="whoName">admin</b><small id="whoHost">—</small></div>
+      <button class="icon-btn" id="logout" title="Sair"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M9 21H5a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h4M16 17l5-5-5-5M21 12H9"/></svg></button></div>
+  </aside>
+
+  <main>
+    <div class="topbar">
+      <button class="icon-btn menu-btn" onclick="toggleMenu()"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M3 6h18M3 12h18M3 18h18"/></svg></button>
+      <div><div class="crumb">Codermax</div><h1 id="topTitle">Visão geral</h1></div>
+      <div class="sp"></div>
+      <span class="pill hide-s" id="flussPill"><span class="dot"></span>Flussonic…</span>
+      <span class="pill hide-s" id="cpuPill">CPU —</span>
+      <span class="pill" id="srvPill"><span class="dot ok"></span>Online</span>
+    </div>
+    <div class="content">
+
+    <!-- ===== VISÃO GERAL ===== -->
+    <section id="p-dash">
+      <div id="defPassWarn" class="card hidden" style="border-color:rgba(245,158,11,.4);background:rgba(245,158,11,.06);padding:12px 16px;margin-bottom:16px;display:flex;gap:10px;align-items:center">
+        <span class="badge warn">Segurança</span><span>Você está usando a senha padrão antiga.</span><a href="#" onclick="go('settings');return false" style="margin-left:auto">Alterar senha →</a></div>
+      <div class="grid g4" style="margin-bottom:16px">
+        <div class="card kpi"><div class="ic green"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><rect x="2" y="7" width="20" height="14" rx="2"/><path d="m17 2-5 5-5-5"/></svg></div><div><div class="l">Canais no ar</div><div class="v" id="kOn">0</div><div class="s" id="kOnS">de 0 cadastrados</div></div></div>
+        <div class="card kpi"><div class="ic blue"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M22 12h-4l-3 9L9 3l-3 9H2"/></svg></div><div><div class="l">Banda de entrada</div><div class="v" id="kBr">0</div><div class="s">streams UDP capturados</div></div></div>
+        <div class="card kpi"><div class="ic cyan"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M1 12s4-8 11-8 11 8 11 8-4 8-11 8-11-8-11-8z"/><circle cx="12" cy="12" r="3"/></svg></div><div><div class="l">Espectadores</div><div class="v" id="kCl">0</div><div class="s" id="kOut">saída 0</div></div></div>
+        <div class="card kpi"><div class="ic amber"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M10.29 3.86 1.82 18a2 2 0 0 0 1.71 3h16.94a2 2 0 0 0 1.71-3L13.71 3.86a2 2 0 0 0-3.42 0z"/><path d="M12 9v4M12 17h.01"/></svg></div><div><div class="l">Erros de continuidade</div><div class="v" id="kCc">0</div><div class="s">perda de pacotes (CC)</div></div></div>
+      </div>
+      <div class="grid g-main" style="margin-bottom:16px">
+        <div class="card"><div class="card-h"><h3>Tráfego de entrada</h3><span class="dim" style="font-size:12px">últimos 2 minutos</span></div><div class="card-b" style="padding:10px 14px 6px"><div id="bigChart" style="height:210px"></div></div></div>
+        <div class="card"><div class="card-h"><h3>Servidor</h3><span class="dim" id="srvUp" style="font-size:12px"></span></div><div class="card-b" style="padding:4px 18px" id="gauges"></div></div>
+      </div>
+      <div class="grid g-main">
+        <div class="card"><div class="card-h"><h3>Status dos canais</h3><button class="btn sm ghost" onclick="go('channels')">Gerenciar →</button></div><div id="dashChannels" style="overflow-x:auto"></div></div>
+        <div class="card"><div class="card-h"><h3>Placas de rede</h3></div><div class="card-b" id="dashIfaces" style="padding:6px 18px"></div></div>
+      </div>
+    </section>
+
+    <!-- ===== MOSAICO ===== -->
+    <section id="p-mosaic" class="hidden">
+      <div class="page-head"><div><h2>Mosaico</h2><p>Miniaturas ao vivo dos canais no ar (atualizam a cada 30s). Clique para assistir.</p></div>
+        <div class="row"><label class="check" style="margin:0"><input type="checkbox" id="mosAll"> Incluir canais em espera <small style="display:inline">(liga a captura)</small></label><button class="btn sm" onclick="refreshThumbs(true)">Atualizar</button></div></div>
+      <div id="mosaic" class="mosaic"></div>
+    </section>
+
+    <!-- ===== CANAIS ===== -->
+    <section id="p-channels" class="hidden">
+      <div class="page-head"><div><h2>Canais</h2><p>Cada canal gera um link HLS (.m3u8) e MPEG-TS (.ts) para uso externo</p></div>
+        <div class="row"><button class="btn" onclick="go('scan')">Procurar no modulador</button><button class="btn primary" onclick="openChannel()"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><path d="M12 5v14M5 12h14"/></svg>Novo canal</button></div></div>
+      <div class="card">
+        <div class="toolbar"><div class="search"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="11" cy="11" r="8"/><path d="m21 21-4.35-4.35"/></svg><input type="search" id="chSearch" placeholder="Buscar canal, IP ou grupo…"></div>
+          <div class="tabs" id="chFilter"><button class="on" data-f="all">Todos</button><button data-f="on">No ar</button><button data-f="idle">Em espera</button><button data-f="off">Desabilitados</button></div></div>
+        <div id="chTable" style="overflow-x:auto"></div>
+      </div>
+    </section>
+
+    <!-- ===== SCANNER ===== -->
+    <section id="p-scan" class="hidden">
+      <div class="page-head"><div><h2>Scanner UDP</h2><p>Encontra automaticamente os streams do modulador/encoder na placa de rede local</p></div></div>
+      <div class="steps"><div class="step on" id="st1"><i>1</i>Placa de rede</div><div class="step" id="st2"><i>2</i>Varredura</div><div class="step" id="st3"><i>3</i>Adicionar canais</div></div>
+      <div class="card" style="margin-bottom:16px"><div class="card-h"><h3>Placa de rede ligada ao modulador</h3><span class="dim" style="font-size:12px">a placa da internet é identificada automaticamente</span></div><div class="card-b"><div id="scanIfaces" class="iface-grid"></div></div></div>
+      <div class="card" style="margin-bottom:16px"><div class="card-h"><h3>Opções da varredura</h3></div><div class="card-b">
+        <div class="grid g2">
+          <label class="f"><span>Tempo de escuta: <b id="durV" style="color:var(--text)">8 s</b></span><input type="range" id="dur" min="3" max="30" value="8"><div class="hint">Mais tempo encontra streams com pouco tráfego.</div></label>
+          <label class="f"><span>Grupos multicast para solicitar (opcional)</span><input type="text" id="groups" placeholder="239.1.1.1-239.1.1.60, 239.255.0.0/28"><div class="hint">Use quando o switch tem IGMP snooping e só envia o multicast após o “join”.</div></label>
+        </div>
+        <div class="grid g3">
+          <label class="check"><input type="checkbox" id="probe" checked><div>Identificar canais<small>nome do serviço, codecs e resolução</small></div></label>
+          <label class="check"><input type="checkbox" id="promisc"><div>Modo promíscuo<small>acha streams enviados a outro IP/MAC</small></div></label>
+          <label class="check"><input type="checkbox" id="other"><div>Mostrar UDP sem vídeo<small>outros tráfegos UDP da placa</small></div></label>
+        </div>
+        <div class="row" style="margin-top:8px"><button class="btn primary" id="scanBtn"><svg viewBox="0 0 24 24" fill="currentColor"><path d="M8 5v14l11-7z"/></svg>Iniciar varredura</button><span class="dim" style="font-size:12px">Varredura 100% passiva — não interfere no Flussonic nem no modulador.</span></div>
+        <div id="scanProg" class="hidden" style="margin-top:16px"><div class="progress"><div id="scanBar"></div></div><div class="hint" id="scanMsg"></div></div>
+      </div></div>
+      <div class="card"><div class="card-h"><h3>Streams encontrados</h3><button class="btn sm primary hidden" id="addAll">+ Adicionar todos</button></div><div class="card-b" id="scanResults"><div class="empty"><div class="em-ic"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="12" cy="12" r="2"/><path d="M16.24 7.76a6 6 0 0 1 0 8.49M7.76 16.24a6 6 0 0 1 0-8.49"/></svg></div><b>Nenhuma varredura ainda</b>Escolha a placa e clique em “Iniciar varredura”.</div></div></div>
+    </section>
+
+    <!-- ===== CONEXÕES ===== -->
+    <section id="p-clients" class="hidden">
+      <div class="page-head"><div><h2>Conexões ativas</h2><p>Quem está assistindo agora, por canal e protocolo</p></div></div>
+      <div class="card" style="overflow-x:auto"><div id="clTable"></div></div>
+    </section>
+
+    <!-- ===== LINKS ===== -->
+    <section id="p-links" class="hidden">
+      <div class="page-head"><div><h2>Links & M3U</h2><p>Use em players (VLC, IPTV Smarters, TiviMate), Smart TVs ou como fonte no Flussonic</p></div></div>
+      <div id="pubHint"></div>
+      <div class="grid g2" style="margin-bottom:16px">
+        <div class="card"><div class="card-h"><h3>Lista M3U · HLS</h3><span class="badge ok">Recomendado</span></div><div class="card-b"><div class="linkbox"><code id="plHls"></code><button class="btn sm" data-copy="plHls">Copiar</button></div><div class="hint">Compatível com navegadores, celulares, Smart TVs e apps IPTV.</div></div></div>
+        <div class="card"><div class="card-h"><h3>Lista M3U · MPEG-TS</h3><span class="badge info">Menor atraso</span></div><div class="card-b"><div class="linkbox"><code id="plTs"></code><button class="btn sm" data-copy="plTs">Copiar</button></div><div class="hint">Ideal para VLC, set-top boxes e para ingest no Flussonic.</div></div></div>
+      </div>
+      <div class="card"><div class="card-h"><h3>Links individuais</h3></div><div id="linksTable" style="overflow-x:auto"></div></div>
+    </section>
+
+    <!-- ===== CONFIG ===== -->
+    <section id="p-settings" class="hidden">
+      <div class="page-head"><div><h2>Configurações</h2><p>Acesso externo, segurança, HLS e backup</p></div><button class="btn primary" id="saveSettings">Salvar alterações</button></div>
+      <div class="grid g2">
+        <div class="card"><div class="card-h"><h3>Acesso externo</h3></div><div class="card-b">
+          <label class="f"><span>Endereço público usado nos links</span><input type="text" id="sPub" placeholder="http://SEU_IP_PUBLICO:30022"><div class="hint">Vazio = usa o endereço digitado no navegador / pelo player.</div></label>
+          <div class="grid g2"><label class="f"><span>Porta do Codermax (TCP)</span><input type="number" id="sPort"><div class="hint">Mudar exige reiniciar o serviço.</div></label>
+          <label class="f"><span>Formato padrão da lista</span><select id="sFmt"><option value="hls">HLS (.m3u8)</option><option value="ts">MPEG-TS (.ts)</option></select></label></div>
+          <label class="f" style="margin:0"><span>Token de segurança dos links</span><div class="linkbox"><code id="sTok"></code><button class="btn sm danger" id="regen">Gerar novo</button></div><div class="hint">Gerar um novo token invalida todos os links já distribuídos.</div></label>
+        </div></div>
+        <div class="card"><div class="card-h"><h3>HLS e desempenho</h3></div><div class="card-b">
+          <div class="grid g2">
+            <label class="f"><span>Duração do segmento (s)</span><input type="number" id="sHt" min="1" max="12"></label>
+            <label class="f"><span>Segmentos na playlist</span><input type="number" id="sHl" min="3" max="30"></label>
+            <label class="f"><span>Desligar HLS ocioso após (s)</span><input type="number" id="sHi"></label>
+            <label class="f"><span>Desligar captura ociosa após (s)</span><input type="number" id="sSi"></label>
+          </div>
+          <label class="f" style="margin:0"><span>Bitrate de vídeo ao transcodificar</span><input type="text" id="sBr" placeholder="3000k"></label>
+        </div></div>
+        <div class="card"><div class="card-h"><h3>Login do painel</h3></div><div class="card-b">
+          <label class="f"><span>Usuário</span><input type="text" id="sUser"></label>
+          <div class="grid g2"><label class="f"><span>Senha atual</span><input type="password" id="sCur" autocomplete="current-password"></label>
+          <label class="f"><span>Nova senha</span><input type="password" id="sNew" autocomplete="new-password"></label></div>
+        </div></div>
+        <div class="card"><div class="card-h"><h3>Backup e restauração</h3></div><div class="card-b">
+          <p class="muted" style="margin-top:0">Exporte todos os canais e configurações para um arquivo, ou restaure de um backup anterior (a senha não é incluída).</p>
+          <div class="row"><a class="btn" href="/api/backup" download><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4M7 10l5 5 5-5M12 15V3"/></svg>Baixar backup</a>
+          <label class="btn"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4M17 8l-5-5-5 5M12 3v12"/></svg>Restaurar…<input type="file" id="restoreFile" accept=".json" hidden></label></div>
+        </div></div>
+      </div>
+    </section>
+
+    <!-- ===== LOGS ===== -->
+    <section id="p-logs" class="hidden">
+      <div class="page-head"><div><h2>Logs do sistema</h2><p>Eventos recentes do Codermax</p></div><div class="row"><div class="tabs" id="logFilter"><button class="on" data-f="">Todos</button><button data-f="WARNING">Avisos</button><button data-f="ERROR">Erros</button></div><button class="btn sm" onclick="loadLogs()">Atualizar</button></div></div>
+      <div class="card"><pre class="logs" id="logs"></pre></div>
+    </section>
+    </div>
+  </main>
+</div>
+
+<!-- ===== MODAL CANAL ===== -->
+<div id="mCh" class="modal hidden"><div class="box">
+  <div class="mh"><h2 id="mChTitle">Novo canal</h2><button class="icon-btn" onclick="closeM('mCh')">✕</button></div>
+  <form id="chForm"><div class="mb">
+    <input type="hidden" id="cId">
+    <div class="grid g2">
+      <label class="f"><span>Nome do canal</span><input type="text" id="cName" required></label>
+      <label class="f"><span>Grupo / categoria</span><input type="text" id="cGroup" placeholder="ex.: Abertos, Esportes" list="groupList"><datalist id="groupList"></datalist></label>
+      <label class="f"><span>IP UDP (multicast ou unicast)</span><input type="text" id="cIp" placeholder="239.1.1.1" required></label>
+      <label class="f"><span>Porta UDP</span><input type="number" id="cPort" placeholder="1234" required></label>
+      <label class="f"><span>Placa de rede</span><select id="cIface"></select></label>
+      <label class="f"><span>Programa / serviço (MPTS)</span><input type="number" id="cProg" placeholder="vazio = stream inteiro"></label>
+      <label class="f"><span>Nome no link (slug)</span><input type="text" id="cSlug" placeholder="automático"></label>
+      <label class="f"><span>Limite de espectadores</span><input type="number" id="cMax" min="0" placeholder="0 = ilimitado"></label>
+    </div>
+    <label class="f"><span>URL do logo (opcional, aparece na lista M3U)</span><input type="text" id="cLogo" placeholder="https://…/logo.png"></label>
+    <label class="f"><span>Modo de captura</span><select id="cCap"><option value="raw">Passivo — recomendado (não ocupa a porta, convive com o Flussonic)</option><option value="socket">Socket UDP tradicional</option></select></label>
+    <label class="check"><input type="checkbox" id="cTrans"><div>Transcodificar HLS para H.264/AAC<small>Para fontes MPEG-2 que não abrem no celular/navegador. Usa CPU.</small></div></label>
+    <label class="check"><input type="checkbox" id="cAlways"><div>Captura sempre ativa<small>O sinal fica pronto instantaneamente para o primeiro espectador.</small></div></label>
+    <label class="check"><input type="checkbox" id="cHlsAlways"><div>HLS sempre gerando<small>Requer “captura sempre ativa”.</small></div></label>
+    <label class="check"><input type="checkbox" id="cEn" checked><div>Canal habilitado</div></label>
+    <label class="f" style="margin-top:10px"><span>Observações</span><textarea id="cNotes" rows="2" placeholder="ex.: Modulador 1, saída 3"></textarea></label>
+  </div>
+  <div class="mf"><button type="button" class="btn" onclick="closeM('mCh')">Cancelar</button><button class="btn primary">Salvar canal</button></div></form>
+</div></div>
+
+<!-- ===== MODAL PLAYER ===== -->
+<div id="mPlay" class="modal hidden"><div class="box wide">
+  <div class="mh"><h2 id="mPlayTitle">Prévia</h2><button class="icon-btn" onclick="closePlayer()">✕</button></div>
+  <div class="mb"><video id="vid" controls autoplay muted playsinline></video>
+  <p class="hint" id="playMsg"></p><div id="probeOut"></div></div>
+</div></div>
+
+<div id="toasts"></div>
+
+<script src="https://cdn.jsdelivr.net/npm/hls.js@1.5.13/dist/hls.min.js"></script>
+<script>
+/* ================= LOGO ================= */
+function logo(size){
+  const s = size==='lg'?46:(size==='md'?36:28), t = size==='lg'?24:(size==='md'?19:15);
+  const id='lg'+Math.random().toString(36).slice(2,7);
+  return `<div style="display:flex;align-items:center;gap:11px">
+  <svg width="${s}" height="${s}" viewBox="0 0 64 64" style="flex:none;filter:drop-shadow(0 6px 14px rgba(8,145,178,.35))"><defs><linearGradient id="${id}" x1="0" y1="0" x2="1" y2="1"><stop offset="0" stop-color="#2563eb"/><stop offset=".55" stop-color="#0891b2"/><stop offset="1" stop-color="#14b8a6"/></linearGradient></defs>
+  <rect width="64" height="64" rx="15" fill="url(#${id})"/><path d="M41.5 19.2A17 17 0 1 0 41.5 44.8" fill="none" stroke="#fff" stroke-width="5.5" stroke-linecap="round"/><path d="M36.2 25.4a9 9 0 1 0 0 13.2" fill="none" stroke="#fff" stroke-opacity=".55" stroke-width="4" stroke-linecap="round"/><path d="M40 26.5 50.5 32 40 37.5z" fill="#fff"/></svg>
+  <div style="line-height:1"><div style="font-weight:800;font-size:${t}px;letter-spacing:.8px">CODER<span style="background:linear-gradient(135deg,#38bdf8,#2dd4bf);-webkit-background-clip:text;background-clip:text;color:transparent">MAX</span></div>
+  <div style="font-size:${Math.round(t*.46)}px;letter-spacing:2.2px;color:#5b6883;margin-top:5px;font-weight:600">IP VIDEO GATEWAY</div></div></div>`;
+}
+document.querySelectorAll('.logo-slot').forEach(e => e.innerHTML = logo(e.dataset.size));
+
+/* ================= utils ================= */
+const $ = id => document.getElementById(id);
+const esc = s => String(s ?? '').replace(/[&<>"']/g, c => ({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c]));
+let ST=null, IFACES=[], SYS=null, CLIENTS=[], SCAN=null, selIface=null, page='dash', prevRx={}, rxRate={}, totalHist=[], chFilter='all', logFilter='';
+const TITLES={dash:'Visão geral',mosaic:'Mosaico',channels:'Canais',scan:'Scanner UDP',clients:'Conexões',links:'Links & M3U',settings:'Configurações',logs:'Logs do sistema'};
+function br(b){ b=b||0; if(b>=1e9) return (b/1e9).toFixed(2)+' Gbps'; if(b>=1e6) return (b/1e6).toFixed(2)+' Mbps'; if(b>=1e3) return (b/1e3).toFixed(0)+' kbps'; return b+' bps'; }
+function bytes(b){ b=b||0; const u=['B','KB','MB','GB','TB']; let i=0; while(b>=1024&&i<4){b/=1024;i++;} return b.toFixed(i?1:0)+' '+u[i]; }
+function dur(s){ s=Math.floor(s||0); const d=Math.floor(s/86400),h=Math.floor(s%86400/3600),m=Math.floor(s%3600/60); if(d) return d+'d '+h+'h'; if(h) return h+'h '+m+'min'; if(m) return m+'min '+(s%60)+'s'; return s+'s'; }
+function toast(msg,type=''){ const t=document.createElement('div'); t.className='toast '+type; t.textContent=msg; $('toasts').appendChild(t); setTimeout(()=>t.remove(),4000); }
+async function api(path,opts={}){
+  const o={method:opts.method||'GET',headers:{}};
+  if(opts.body!==undefined){ o.body=JSON.stringify(opts.body); o.headers['Content-Type']='application/json'; }
+  const r=await fetch('/api/'+path,o);
+  if(r.status===401 && path!=='login'){ showLogin(); throw new Error('Sessão expirada'); }
+  const j=await r.json().catch(()=>({}));
+  if(!r.ok) throw new Error(j.error||('Erro '+r.status));
+  return j;
+}
+function copy(text){
+  if(navigator.clipboard && window.isSecureContext){ navigator.clipboard.writeText(text).then(()=>toast('Link copiado para a área de transferência','ok')); return; }
+  const ta=document.createElement('textarea'); ta.value=text; document.body.appendChild(ta); ta.select(); document.execCommand('copy'); ta.remove(); toast('Link copiado para a área de transferência','ok');
+}
+document.addEventListener('click',e=>{ const b=e.target.closest('[data-copy]'); if(b) copy($(b.dataset.copy).textContent); const c=e.target.closest('[data-link]'); if(c){ e.stopPropagation(); copy(c.dataset.link);} });
+function spark(vals,w=110,h=28,color='#22d3ee'){
+  if(!vals||vals.length<2) return `<svg width="${w}" height="${h}"></svg>`;
+  const mx=Math.max(...vals,1), st=w/(vals.length-1);
+  const pts=vals.map((v,i)=>[i*st, h-2-(v/mx)*(h-4)]);
+  const d=pts.map((p,i)=>(i?'L':'M')+p[0].toFixed(1)+' '+p[1].toFixed(1)).join(' ');
+  return `<svg width="${w}" height="${h}" viewBox="0 0 ${w} ${h}"><path d="${d} L${w} ${h} L0 ${h}Z" fill="${color}" fill-opacity=".12"/><path d="${d}" fill="none" stroke="${color}" stroke-width="1.6"/></svg>`;
+}
+function areaChart(el,vals){
+  const W=el.clientWidth||600, H=el.clientHeight||210, pl=70, pb=20, pt=8;
+  const mx=Math.max(...vals,1e6)*1.15, n=Math.max(vals.length,2), w=W-pl-6, h=H-pb-pt;
+  const x=i=>pl+i*(w/(120-1))+(120-n)*(w/(120-1)), y=v=>pt+h-(v/mx)*h;
+  let grid=''; for(let k=0;k<=4;k++){ const v=mx*k/4, yy=y(v); grid+=`<line x1="${pl}" x2="${W-6}" y1="${yy}" y2="${yy}" stroke="#1e2a40"/><text x="${pl-8}" y="${yy+4}" fill="#5b6883" font-size="10.5" text-anchor="end">${br(v).replace(' bps','')}</text>`; }
+  const d=vals.map((v,i)=>(i?'L':'M')+x(i).toFixed(1)+' '+y(v).toFixed(1)).join(' ');
+  const area=vals.length>1?`<path d="${d} L${x(vals.length-1)} ${pt+h} L${x(0)} ${pt+h}Z" fill="url(#ag)"/><path d="${d}" fill="none" stroke="#22d3ee" stroke-width="2"/>`:'';
+  el.innerHTML=`<svg width="${W}" height="${H}"><defs><linearGradient id="ag" x1="0" y1="0" x2="0" y2="1"><stop offset="0" stop-color="#0891b2" stop-opacity=".45"/><stop offset="1" stop-color="#0891b2" stop-opacity="0"/></linearGradient></defs>${grid}${area}<text x="${pl}" y="${H-4}" fill="#5b6883" font-size="10.5">-2 min</text><text x="${W-6}" y="${H-4}" fill="#5b6883" font-size="10.5" text-anchor="end">agora</text></svg>`;
+}
+function ring(pct,color){ const r=24,c=2*Math.PI*r,o=c*(1-Math.min(pct,100)/100); return `<div class="ring"><svg width="58" height="58"><circle cx="29" cy="29" r="${r}" fill="none" stroke="#1e2a40" stroke-width="6"/><circle cx="29" cy="29" r="${r}" fill="none" stroke="${color}" stroke-width="6" stroke-linecap="round" stroke-dasharray="${c}" stroke-dashoffset="${o}" style="transition:stroke-dashoffset .6s"/></svg><b>${Math.round(pct)}%</b></div>`; }
+const pctColor=p=>p>85?'#ef4444':p>65?'#f59e0b':'#22d3ee';
+
+/* ================= login / nav ================= */
+function showLogin(){ $('app').classList.add('hidden'); $('login').classList.remove('hidden'); }
+$('loginForm').onsubmit=async e=>{ e.preventDefault(); $('lerr').textContent=''; try{ await api('login',{method:'POST',body:{user:$('lu').value,pass:$('lp').value}}); start(); }catch(err){ $('lerr').textContent=err.message; } };
+$('logout').onclick=async()=>{ await api('logout',{method:'POST'}).catch(()=>{}); location.reload(); };
+function toggleMenu(){ $('side').classList.toggle('open'); }
+function go(p){
+  page=p; $('topTitle').textContent=TITLES[p]||'';
+  document.querySelectorAll('.nav').forEach(n=>n.classList.toggle('active',n.dataset.page===p));
+  document.querySelectorAll('.content > section').forEach(s=>s.classList.toggle('hidden',s.id!=='p-'+p));
+  $('side').classList.remove('open'); history.replaceState(null,'','#'+p);
+  if(p==='settings') loadSettings();
+  if(p==='logs') loadLogs();
+  if(p==='mosaic') refreshThumbs(true);
+  render();
+}
+document.querySelectorAll('.nav').forEach(n=>n.onclick=()=>go(n.dataset.page));
+
+/* ================= dados ================= */
+async function refresh(){
+  try{
+    const [s,i,sy,cl]=await Promise.all([api('status'),api('interfaces'),api('system'),api('clients')]);
+    ST=s; SYS=sy; CLIENTS=cl.clients;
+    i.interfaces.forEach(f=>{ const p=prevRx[f.name]; if(p) rxRate[f.name]=Math.max(0,(f.rx_bytes-p.b)*8/(i.time-p.t)); prevRx[f.name]={b:f.rx_bytes,t:i.time}; });
+    IFACES=i.interfaces;
+    if(!selIface){ const l=IFACES.find(f=>f.role==='local'&&f.state!=='down')||IFACES.find(f=>f.role==='local'); selIface=l?l.name:(IFACES[0]||{}).name; }
+    const seen={}; let tot=0; ST.channels.forEach(c=>{ const k=c.iface+c.udp_ip+c.udp_port; if(!seen[k]){ seen[k]=1; tot+=c.status.bitrate||0; } });
+    totalHist.push(tot); if(totalHist.length>120) totalHist.shift();
+    $('srvPill').innerHTML='<span class="dot ok"></span>Online';
+    render();
+  }catch(e){ $('srvPill').innerHTML='<span class="dot bad"></span>Sem conexão'; }
+}
+const urls=ch=>{ const b=ST.base_url+'/'+ST.token+'/'+ch.slug; return {hls:b+'/index.m3u8',ts:b+'.ts'}; };
+function stateBadge(c){
+  if(!c.enabled) return '<span class="badge bad">Desabilitado</span>';
+  const st=c.status;
+  if(st.state==='ativo') return '<span class="badge ok"><span class="dot ok"></span>No ar</span>';
+  if(st.state==='sem_sinal') return '<span class="badge warn"><span class="dot warn"></span>Sem sinal</span>';
+  return '<span class="badge"><span class="dot"></span>Em espera</span>';
+}
+const roleBadge=f=>f.role==='internet'?'<span class="badge warn">Internet</span>':f.role==='loopback'?'<span class="badge">Loopback</span>':'<span class="badge info">Rede local</span>';
+
+function render(){
+  if(!ST) return;
+  const chs=ST.channels, on=chs.filter(c=>c.status.state==='ativo');
+  $('whoName').textContent=ST.user; $('avatar').textContent=(ST.user||'A')[0].toUpperCase(); $('whoHost').textContent=ST.hostname+' · v'+ST.version;
+  $('navCh').textContent=chs.length; $('navCl').textContent=CLIENTS.length;
+  $('defPassWarn').classList.toggle('hidden',!ST.default_pass);
+  if(SYS) $('cpuPill').textContent='CPU '+Math.round(SYS.cpu)+'% · RAM '+Math.round(100*SYS.mem_used/(SYS.mem_total||1))+'%';
+  if(page==='dash') renderDash(chs,on);
+  if(page==='channels') renderChannels();
+  if(page==='links') renderLinks();
+  if(page==='scan') renderScanIfaces();
+  if(page==='clients') renderClients();
+  if(page==='mosaic') renderMosaic();
+}
+function renderDash(chs,on){
+  $('kOn').textContent=on.length; $('kOnS').textContent='de '+chs.length+' cadastrado'+(chs.length===1?'':'s');
+  $('kBr').textContent=br(totalHist[totalHist.length-1]);
+  $('kCl').textContent=CLIENTS.length; $('kOut').textContent='saída '+br(CLIENTS.reduce((a,c)=>a+(c.rate||0),0));
+  $('kCc').textContent=chs.reduce((a,c)=>a+(c.status.cc_errors||0),0);
+  areaChart($('bigChart'),totalHist);
+  if(SYS){
+    const mp=100*SYS.mem_used/(SYS.mem_total||1), dp=100*SYS.disk_used/(SYS.disk_total||1);
+    $('srvUp').textContent='ligado há '+dur(SYS.uptime);
+    $('gauges').innerHTML=
+      `<div class="gauge">${ring(SYS.cpu,pctColor(SYS.cpu))}<div><div class="l">Processador</div><div class="s">${SYS.cores} núcleos · carga ${SYS.load.map(x=>x.toFixed(2)).join(' / ')}</div></div></div>`+
+      `<div class="gauge">${ring(mp,pctColor(mp))}<div><div class="l">Memória</div><div class="s">${bytes(SYS.mem_used)} de ${bytes(SYS.mem_total)}</div></div></div>`+
+      `<div class="gauge">${ring(dp,pctColor(dp))}<div><div class="l">Disco</div><div class="s">${bytes(SYS.disk_used)} de ${bytes(SYS.disk_total)}</div></div></div>`;
+  }
+  $('dashChannels').innerHTML=chs.length?'<table><thead><tr><th>Canal</th><th>Status</th><th class="hide-m">Bitrate</th><th class="hide-m">Atividade</th><th>Espect.</th></tr></thead><tbody>'+chs.map(c=>`<tr><td><b>${esc(c.name)}</b><div class="dim mono" style="font-size:11px">${esc(c.udp_ip)}:${c.udp_port}</div></td><td>${stateBadge(c)}</td><td class="hide-m mono">${br(c.status.bitrate)}</td><td class="hide-m">${spark(c.status.history)}</td><td>${c.status.clients}</td></tr>`).join('')+'</tbody></table>'
+    :`<div class="empty"><div class="em-ic"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="12" cy="12" r="2"/><path d="M16.24 7.76a6 6 0 0 1 0 8.49M7.76 16.24a6 6 0 0 1 0-8.49M19.07 4.93a10 10 0 0 1 0 14.14M4.93 19.07a10 10 0 0 1 0-14.14"/></svg></div><b>Nenhum canal ainda</b>Use o scanner para encontrar os streams do modulador.<br><br><button class="btn primary" onclick="go('scan')">Abrir Scanner UDP</button></div>`;
+  $('dashIfaces').innerHTML=IFACES.filter(f=>f.role!=='loopback').map(f=>`<div class="gauge" style="justify-content:space-between"><div><div class="l" style="display:flex;gap:8px;align-items:center"><span class="dot ${f.state==='up'?'ok':(f.state==='down'?'bad':'warn')}"></span>${esc(f.name)} ${roleBadge(f)}</div><div class="s mono">${f.ipv4.map(esc).join(', ')||'sem IPv4'}${f.speed?' · '+f.speed+' Mb/s':''}</div></div><div style="text-align:right"><b class="mono">${br(rxRate[f.name])}</b><div class="s">entrada</div></div></div>`).join('')||'<div class="empty">Nenhuma placa</div>';
+}
+
+/* ================= mosaico / miniaturas ================= */
+let thumbT={}, thumbTimer=null;
+function thumbUrl(c){ return '/api/channels/'+c.id+'/thumb?age=25&t='+(thumbT[c.id]||0); }
+function refreshThumbs(now){ const t=Date.now(); (ST?ST.channels:[]).forEach(c=>thumbT[c.id]=t); if(now) renderMosaic(true); }
+function renderMosaic(force){
+  const all=$('mosAll').checked, chs=ST.channels.filter(c=>c.enabled);
+  if(!chs.length){ $('mosaic').innerHTML='<div class="empty" style="grid-column:1/-1"><b>Nenhum canal</b>Cadastre canais para ver o mosaico.</div>'; return; }
+  const sig=chs.map(c=>c.id+c.status.state+(thumbT[c.id]||0)).join()+all;
+  if(!force && $('mosaic').dataset.sig===sig){ chs.forEach(c=>{ const e=document.querySelector(`[data-br="${c.id}"]`); if(e) e.textContent=br(c.status.bitrate); }); return; }
+  $('mosaic').dataset.sig=sig;
+  $('mosaic').innerHTML=chs.map(c=>{ const live=c.status.state==='ativo'||all;
+    return `<div class="tile" onclick="preview('${c.id}')"><div class="thumb" ${live?`style="background-image:url('${thumbUrl(c)}')"`:''}>
+      <span class="st">${c.status.state==='ativo'?'<span class="badge live">● AO VIVO</span>':stateBadge(c)}</span>
+      ${live?'':'<div class="ph"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><rect x="2" y="7" width="20" height="14" rx="2"/><path d="m17 2-5 5-5-5"/></svg>em espera</div>'}
+      <div class="play"><svg width="18" height="18" viewBox="0 0 24 24" fill="#fff"><path d="M8 5v14l11-7z"/></svg></div>
+      <span class="br" data-br="${c.id}">${br(c.status.bitrate)}</span></div>
+      <div class="meta"><b>${esc(c.name)}</b><span class="dim" style="font-size:11.5px;white-space:nowrap">👁 ${c.status.clients}</span></div></div>`; }).join('');
+}
+
+/* ================= canais ================= */
+$('chSearch').oninput=()=>renderChannels();
+document.querySelectorAll('#chFilter button').forEach(b=>b.onclick=()=>{ document.querySelectorAll('#chFilter button').forEach(x=>x.classList.remove('on')); b.classList.add('on'); chFilter=b.dataset.f; renderChannels(); });
+function renderChannels(){
+  const q=$('chSearch').value.toLowerCase().trim();
+  let chs=ST.channels.filter(c=>!q||(c.name+' '+c.udp_ip+':'+c.udp_port+' '+(c.group||'')).toLowerCase().includes(q));
+  if(chFilter==='on') chs=chs.filter(c=>c.status.state==='ativo'); if(chFilter==='idle') chs=chs.filter(c=>c.enabled&&c.status.state!=='ativo'); if(chFilter==='off') chs=chs.filter(c=>!c.enabled);
+  if(document.activeElement && document.activeElement.closest && document.activeElement.closest('#chTable')) return;
+  if(!ST.channels.length){ $('chTable').innerHTML=`<div class="empty"><div class="em-ic"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><rect x="2" y="7" width="20" height="14" rx="2"/><path d="m17 2-5 5-5-5"/></svg></div><b>Nenhum canal cadastrado</b>Encontre os streams automaticamente ou cadastre manualmente.<br><br><button class="btn primary" onclick="go('scan')">Procurar no modulador</button></div>`; return; }
+  if(!chs.length){ $('chTable').innerHTML='<div class="empty">Nenhum canal neste filtro.</div>'; return; }
+  const ids=ST.channels.map(c=>c.id);
+  $('chTable').innerHTML='<table><thead><tr><th style="width:30px"></th><th>Canal</th><th class="hide-m">Origem</th><th>Status</th><th class="hide-m">Bitrate</th><th class="hide-m">Sinal</th><th>Links</th><th style="text-align:right">Ações</th></tr></thead><tbody>'+chs.map(c=>{ const u=urls(c), idx=ids.indexOf(c.id);
+    const tags=[c.group?esc(c.group):'', c.program?'prog. '+c.program:'', c.transcode?'transcodifica':'', c.always_on?'sempre ativo':'', c.max_clients?'máx '+c.max_clients:''].filter(Boolean).join(' · ');
+    return `<tr><td><div style="display:flex;flex-direction:column;gap:2px"><button class="icon-btn" style="width:22px;height:18px;border:0" ${idx===0?'disabled':''} onclick="move('${c.id}',-1)" title="Subir">▲</button><button class="icon-btn" style="width:22px;height:18px;border:0" ${idx===ids.length-1?'disabled':''} onclick="move('${c.id}',1)" title="Descer">▼</button></div></td>
+    <td><div style="display:flex;gap:11px;align-items:center"><div class="mini-thumb" ${c.status.state==='ativo'?`style="background-image:url('${thumbUrl(c)}')"`:''}></div><div><b>${esc(c.name)}</b><div class="dim" style="font-size:11.5px">${tags||'&nbsp;'}</div></div></div></td>
+    <td class="mono muted hide-m">${esc(c.udp_ip)}:${c.udp_port}<div class="dim">${esc(c.iface)} · ${c.capture==='socket'?'socket':'passivo'}</div></td>
+    <td>${stateBadge(c)}${c.status.error?`<div class="hint" style="color:#f87171;max-width:200px">${esc(c.status.error).slice(0,90)}</div>`:''}</td>
+    <td class="hide-m"><span class="mono">${br(c.status.bitrate)}</span><div>${spark(c.status.history,90,22)}</div></td>
+    <td class="hide-m">${c.status.state==='ativo'?(c.status.cc_errors?`<span class="badge warn">${c.status.cc_errors} erros CC</span>`:'<span class="badge ok">Perfeito</span>'):'<span class="dim">—</span>'}<div class="dim" style="font-size:11.5px;margin-top:3px">👁 ${c.status.clients} espect.</div></td>
+    <td><div class="row" style="gap:5px;flex-wrap:nowrap"><button class="btn sm" data-link="${esc(u.hls)}">m3u8</button><button class="btn sm" data-link="${esc(u.ts)}">ts</button></div></td>
+    <td><div class="row" style="gap:5px;justify-content:flex-end;flex-wrap:nowrap"><label class="switch" title="Habilitar/desabilitar"><input type="checkbox" ${c.enabled?'checked':''} onchange="toggleCh('${c.id}')"><span></span></label>
+      <button class="btn sm" onclick="preview('${c.id}')" title="Assistir">▶</button><button class="btn sm" onclick="probe('${c.id}')" title="Analisar sinal">ⓘ</button><button class="btn sm" onclick="openChannel('${c.id}')">Editar</button><button class="btn sm danger" onclick="delChannel('${c.id}')" title="Remover">✕</button></div></td></tr>`; }).join('')+'</tbody></table>';
+}
+async function move(id,d){ const ids=ST.channels.map(c=>c.id), i=ids.indexOf(id), j=i+d; if(j<0||j>=ids.length) return; [ids[i],ids[j]]=[ids[j],ids[i]]; await api('channels/order',{method:'POST',body:{ids}}); refresh(); }
+async function toggleCh(id){ try{ const r=await api('channels/'+id+'/toggle',{method:'POST'}); toast(r.enabled?'Canal habilitado':'Canal desabilitado','ok'); refresh(); }catch(e){ toast(e.message,'err'); } }
+function fillIfaceSelect(sel){ $('cIface').innerHTML=IFACES.map(f=>`<option value="${esc(f.name)}" ${f.name===sel?'selected':''}>${esc(f.name)} — ${esc(f.ipv4[0]||'sem IP')}${f.role==='internet'?' (internet)':''}</option>`).join(''); }
+function openChannel(id,preset){
+  const c=id?ST.channels.find(x=>x.id===id):(preset||{});
+  $('mChTitle').textContent=id?'Editar canal':'Novo canal';
+  $('cId').value=id||''; $('cName').value=c.name||''; $('cIp').value=c.udp_ip||''; $('cPort').value=c.udp_port||'';
+  $('cProg').value=c.program||''; $('cGroup').value=c.group||''; $('cSlug').value=id?(c.slug||''):''; $('cLogo').value=c.logo||''; $('cMax').value=c.max_clients||''; $('cNotes').value=c.notes||'';
+  $('cCap').value=c.capture||'raw'; $('cTrans').checked=!!c.transcode; $('cAlways').checked=!!c.always_on; $('cHlsAlways').checked=!!c.hls_always; $('cEn').checked=c.enabled!==false;
+  $('groupList').innerHTML=[...new Set(ST.channels.map(x=>x.group).filter(Boolean))].map(g=>`<option value="${esc(g)}">`).join('');
+  fillIfaceSelect(c.iface||selIface); $('mCh').classList.remove('hidden'); $('cName').focus();
+}
+function closeM(id){ $(id).classList.add('hidden'); }
+$('chForm').onsubmit=async e=>{ e.preventDefault();
+  const body={name:$('cName').value,udp_ip:$('cIp').value.trim(),udp_port:+$('cPort').value,iface:$('cIface').value,program:$('cProg').value,group:$('cGroup').value,slug:$('cSlug').value,logo:$('cLogo').value,capture:$('cCap').value,transcode:$('cTrans').checked,always_on:$('cAlways').checked,hls_always:$('cHlsAlways').checked,enabled:$('cEn').checked,max_clients:+$('cMax').value||0,notes:$('cNotes').value};
+  try{ const id=$('cId').value; if(id) await api('channels/'+id,{method:'PUT',body}); else await api('channels',{method:'POST',body}); toast('Canal salvo com sucesso','ok'); closeM('mCh'); await refresh(); }catch(err){ toast(err.message,'err'); } };
+async function delChannel(id){ const c=ST.channels.find(x=>x.id===id); if(!confirm('Remover o canal "'+c.name+'"?\nOs links dele deixarão de funcionar.')) return; try{ await api('channels/'+id,{method:'DELETE'}); toast('Canal removido','ok'); refresh(); }catch(err){ toast(err.message,'err'); } }
+
+/* ================= player / análise ================= */
+let hls=null;
+function preview(id){
+  const c=ST.channels.find(x=>x.id===id), u=urls(c);
+  $('mPlayTitle').textContent=c.name; $('probeOut').innerHTML=''; $('vid').classList.remove('hidden');
+  $('playMsg').innerHTML='Carregando… o primeiro acesso leva alguns segundos para gerar o HLS.'; $('mPlay').classList.remove('hidden');
+  const v=$('vid');
+  if(window.Hls&&Hls.isSupported()){ hls=new Hls({manifestLoadingMaxRetry:6,manifestLoadingRetryDelay:2000,liveSyncDurationCount:2});
+    hls.loadSource(u.hls); hls.attachMedia(v);
+    hls.on(Hls.Events.MANIFEST_PARSED,()=>{ $('playMsg').innerHTML='<span class="badge live">● AO VIVO</span> &nbsp;Se não aparecer imagem, a fonte pode ser MPEG-2 (abra o link .ts no VLC ou ative “Transcodificar”).'; v.play().catch(()=>{}); });
+    hls.on(Hls.Events.ERROR,(e,d)=>{ if(d.fatal) $('playMsg').textContent='Não foi possível reproduzir no navegador ('+d.details+'). Teste o link no VLC.'; });
+  } else if(v.canPlayType('application/vnd.apple.mpegurl')) v.src=u.hls; else $('playMsg').textContent='Seu navegador não suporta HLS. Use o VLC.';
+}
+function closePlayer(){ if(hls){hls.destroy();hls=null;} const v=$('vid'); v.pause(); v.removeAttribute('src'); v.load(); closeM('mPlay'); }
+const chips=p=>(p.streams||[]).map(s=>`<span class="chip ${s.type==='video'?'v':''}">${esc(s.type==='video'?'vídeo':s.type==='audio'?'áudio':s.type)} ${esc(s.codec||'?')}${s.res?' '+esc(s.res):''}${s.fps?' '+s.fps+'fps':''}${s.lang?' '+esc(s.lang):''}${s.channels?' '+s.channels+'ch':''}</span>`).join('');
+async function probe(id){
+  const c=ST.channels.find(x=>x.id===id);
+  $('mPlayTitle').textContent='Análise de sinal — '+c.name; $('vid').classList.add('hidden'); $('playMsg').textContent='Capturando 5 segundos do sinal…'; $('probeOut').innerHTML='<div class="progress" style="margin-top:10px"><div style="width:100%;animation:none;opacity:.5"></div></div>'; $('mPlay').classList.remove('hidden');
+  try{ const r=await api('channels/'+id+'/probe',{method:'POST'});
+    if(!r.ok){ $('playMsg').innerHTML='<span class="badge bad">Sem sinal</span> &nbsp;'+esc(r.error)+'. Verifique se o modulador envia para <b class="mono">'+esc(c.udp_ip)+':'+c.udp_port+'</b> na placa <b>'+esc(c.iface)+'</b>.'; $('probeOut').innerHTML=''; return; }
+    $('playMsg').innerHTML='<span class="badge ok">Sinal OK</span> &nbsp;'+br(r.bitrate)+' · '+(c.status.cc_errors||0)+' erros de continuidade';
+    $('probeOut').innerHTML=(r.programs||[]).map(p=>`<div class="flow"><div class="top"><div><b>${esc(p.service_name||'Serviço')}</b> <span class="dim">${p.program?'programa '+p.program:''} ${esc(p.provider||'')}</span></div></div><div class="prog"><div class="chips">${chips(p)}</div></div></div>`).join('')||'<p class="hint">Não foi possível identificar os streams.</p>';
+  }catch(err){ $('playMsg').textContent=err.message; }
+}
+
+/* ================= conexões ================= */
+function renderClients(){
+  if(!CLIENTS.length){ $('clTable').innerHTML=`<div class="empty"><div class="em-ic"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M17 21v-2a4 4 0 0 0-4-4H5a4 4 0 0 0-4 4v2"/><circle cx="9" cy="7" r="4"/></svg></div><b>Ninguém assistindo agora</b>As conexões aparecem aqui assim que alguém abrir um link.</div>`; return; }
+  $('clTable').innerHTML='<table><thead><tr><th>Cliente</th><th>Canal</th><th>Protocolo</th><th>Conectado há</th><th class="hide-m">Tráfego</th><th class="hide-m">Player</th><th></th></tr></thead><tbody>'+CLIENTS.map(c=>`<tr><td class="mono">${esc(c.ip)}</td><td><b>${esc(c.channel)}</b></td><td><span class="badge ${c.proto==='HLS'?'ok':'info'}">${esc(c.proto)}</span></td><td>${dur(Date.now()/1000-c.since)}</td><td class="hide-m mono">${bytes(c.bytes)}<div class="dim">${br(c.rate)}</div></td><td class="hide-m dim" style="max-width:220px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap" title="${esc(c.ua)}">${esc(c.ua||'—')}</td><td style="text-align:right">${c.proto==='HLS'?'':`<button class="btn sm danger" onclick="kick('${c.id}')">Derrubar</button>`}</td></tr>`).join('')+'</tbody></table>';
+}
+async function kick(id){ if(!confirm('Derrubar esta conexão?')) return; await api('clients/'+id,{method:'DELETE'}).catch(e=>toast(e.message,'err')); toast('Conexão encerrada','ok'); refresh(); }
+
+/* ================= links ================= */
+function renderLinks(){
+  const b=ST.base_url+'/'+ST.token+'/playlist.m3u'; $('plHls').textContent=b+'?format=hls'; $('plTs').textContent=b+'?format=ts';
+  const host=ST.base_url.replace(/^https?:\/\//,'').split(':')[0];
+  const priv=/^(10\.|192\.168\.|172\.(1[6-9]|2\d|3[01])\.|127\.|localhost)/.test(host);
+  $('pubHint').innerHTML=priv?`<div class="card" style="border-color:rgba(245,158,11,.4);background:rgba(245,158,11,.06);padding:12px 16px;margin-bottom:16px"><span class="badge warn">Atenção</span> &nbsp;Os links usam o endereço interno <b class="mono">${esc(host)}</b>. Para acesso fora da sua rede, informe o IP público ou domínio em <a href="#" onclick="go('settings');return false">Configurações</a> e libere a porta <b>${ST.port}/TCP</b>.</div>`:'';
+  const chs=ST.channels;
+  $('linksTable').innerHTML=chs.length?'<table><thead><tr><th>Canal</th><th>HLS (.m3u8)</th><th>MPEG-TS (.ts)</th></tr></thead><tbody>'+chs.map(c=>{const u=urls(c); return `<tr><td><b>${esc(c.name)}</b></td><td><div class="linkbox"><code>${esc(u.hls)}</code><button class="btn sm" data-link="${esc(u.hls)}">Copiar</button></div></td><td><div class="linkbox"><code>${esc(u.ts)}</code><button class="btn sm" data-link="${esc(u.ts)}">Copiar</button></div></td></tr>`}).join('')+'</tbody></table>':'<div class="empty">Cadastre canais para gerar os links.</div>';
+}
+
+/* ================= scanner ================= */
+$('dur').oninput=()=>$('durV').textContent=$('dur').value+' s';
+function renderScanIfaces(){
+  const list=IFACES.filter(f=>f.role!=='loopback'||IFACES.length<3);
+  const sig=list.map(f=>f.name+f.state).join()+selIface;
+  const html=f=>`<div class="iface-rx mono" style="margin-left:auto"><b>${br(rxRate[f.name])}</b></div>`;
+  if($('scanIfaces').dataset.sig===sig){ list.forEach(f=>{ const e=document.querySelector(`[data-rx="${f.name}"]`); if(e) e.textContent=br(rxRate[f.name]); }); return; }
+  $('scanIfaces').dataset.sig=sig;
+  $('scanIfaces').innerHTML=list.map(f=>`<div class="iface ${f.name===selIface?'sel':''}" onclick="selIface='${esc(f.name)}';renderScanIfaces()">
+    <div class="n">${esc(f.name)} ${roleBadge(f)}</div><div class="mono dim" style="margin:7px 0">${f.ipv4.map(esc).join(', ')||'sem IPv4'}</div>
+    <div class="row" style="gap:7px"><span class="dot ${f.state==='up'?'ok':(f.state==='down'?'bad':'warn')}"></span><span class="muted">${esc(f.state)}</span><span class="mono" style="margin-left:auto">↓ <b data-rx="${esc(f.name)}">${br(rxRate[f.name])}</b></span></div>
+    ${f.role==='internet'?'<div class="hint">Placa da internet — normalmente o modulador fica na outra.</div>':''}</div>`).join('');
+}
+function setStep(n){ [1,2,3].forEach(i=>$('st'+i).classList.toggle('on',i<=n)); }
+$('scanBtn').onclick=async()=>{
+  if(!selIface) return toast('Escolha uma placa de rede','err');
+  try{ await api('scan',{method:'POST',body:{iface:selIface,duration:+$('dur').value,groups:$('groups').value,probe:$('probe').checked,promisc:$('promisc').checked,show_other:$('other').checked}});
+    $('scanBtn').disabled=true; $('scanProg').classList.remove('hidden'); setStep(2); pollScan();
+  }catch(err){ toast(err.message,'err'); }
+};
+async function pollScan(){
+  const s=await api('scan').catch(()=>null); if(!s) return setTimeout(pollScan,1500);
+  $('scanBar').style.width=s.progress+'%'; $('scanMsg').textContent=s.progress<70?'Escutando o tráfego de '+selIface+'…':'Identificando canais, codecs e resolução…';
+  if(s.running) return setTimeout(pollScan,700);
+  $('scanBtn').disabled=false; setTimeout(()=>$('scanProg').classList.add('hidden'),800);
+  if(s.error){ toast('Erro: '+s.error,'err'); setStep(1); return; }
+  SCAN=s.result; setStep(3); renderScan();
+}
+const existing=(dst,port,prog)=>ST.channels.find(c=>c.udp_ip===dst&&+c.udp_port===+port&&(c.program||null)===(prog||null));
+function renderScan(){
+  const fl=SCAN.flows; $('addAll').classList.toggle('hidden',!fl.some(f=>f.kind!=='udp'));
+  if(!fl.length){ $('scanResults').innerHTML=`<div class="empty"><div class="em-ic"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="11" cy="11" r="8"/><path d="m21 21-4.35-4.35"/></svg></div><b>Nenhum stream de vídeo em ${esc(SCAN.iface)}</b>Confira se o modulador está enviando para esta placa, aumente o tempo de escuta,<br>informe a faixa multicast (ex.: 239.0.0.1-239.0.0.100) ou ative o modo promíscuo.</div>`; return; }
+  $('scanResults').innerHTML=`<p class="muted" style="margin-top:0">${fl.length} stream(s) encontrado(s) em <b>${esc(SCAN.iface)}</b>${SCAN.joined?' · '+SCAN.joined+' grupos solicitados':''}.</p>`+fl.map((f,i)=>{
+    const kind=f.kind==='mpegts'?'<span class="badge ok">MPEG-TS</span>':f.kind==='rtp'?'<span class="badge ok">RTP / TS</span>':'<span class="badge">UDP sem vídeo</span>';
+    const progs=(f.programs&&f.programs.length)?f.programs:(f.kind!=='udp'?[{program:null,service_name:'',streams:[]}]:[]);
+    return `<div class="flow"><div class="top"><div><div class="addr">udp://${esc(f.dst)}:${f.port}</div><div class="dim" style="font-size:12px">origem ${esc(f.source)} · ${f.multicast?'multicast':'unicast'} · ${br(f.bitrate)}</div></div><div class="row" style="gap:6px">${kind}${progs.length>1?'<span class="badge info">MPTS · '+progs.length+' serviços</span>':''}</div></div>
+      ${progs.map((p,j)=>{ const ex=existing(f.dst,f.port,progs.length>1?p.program:null); return `<div class="prog"><div><b>${esc(p.service_name||('Canal '+f.dst+':'+f.port))}</b> <span class="dim">${p.program?'· programa '+p.program:''} ${esc(p.provider||'')}</span><div class="chips">${chips(p)}</div></div>
+        ${ex?'<span class="badge ok">✓ Cadastrado</span>':`<div class="row" style="gap:6px"><button class="btn sm" onclick="addFromScan(${i},${j},true)">Personalizar</button><button class="btn sm primary" onclick="addFromScan(${i},${j})">+ Adicionar</button></div>`}</div>`}).join('')}</div>`; }).join('');
+}
+function presetFrom(i,j){ const f=SCAN.flows[i], progs=(f.programs&&f.programs.length)?f.programs:[{}], p=progs[j]||{};
+  return {name:p.service_name||('Canal '+f.dst.split('.').pop()+'-'+f.port),udp_ip:f.dst,udp_port:f.port,iface:SCAN.iface,program:progs.length>1?p.program:null,group:p.provider&&p.provider!=='FFmpeg'?p.provider:'',capture:'raw',transcode:false,enabled:true}; }
+async function addFromScan(i,j,edit){ const pre=presetFrom(i,j); if(edit) return openChannel(null,pre);
+  try{ await api('channels',{method:'POST',body:pre}); toast('“'+pre.name+'” adicionado','ok'); await refresh(); renderScan(); }catch(err){ toast(err.message,'err'); } }
+$('addAll').onclick=async()=>{ const list=[];
+  SCAN.flows.forEach((f,i)=>{ if(f.kind==='udp') return; const progs=(f.programs&&f.programs.length)?f.programs:[{}]; progs.forEach((p,j)=>{ if(!existing(f.dst,f.port,progs.length>1?p.program:null)) list.push(presetFrom(i,j)); }); });
+  if(!list.length) return toast('Todos os streams já estão cadastrados');
+  if(!confirm('Adicionar '+list.length+' canal(is)?')) return;
+  try{ await api('channels',{method:'POST',body:{channels:list}}); toast(list.length+' canal(is) adicionado(s)','ok'); await refresh(); renderScan(); }catch(err){ toast(err.message,'err'); } };
+
+/* ================= configurações ================= */
+async function loadSettings(){ const s=await api('settings');
+  $('sPub').value=s.public_url||''; $('sPort').value=s.port; $('sFmt').value=s.default_format; $('sTok').textContent=s.stream_token;
+  $('sHt').value=s.hls_time; $('sHl').value=s.hls_list_size; $('sHi').value=s.hls_idle_timeout; $('sSi').value=s.source_idle_timeout; $('sBr').value=s.transcode_bitrate; $('sUser').value=s.admin_user; $('sCur').value=''; $('sNew').value=''; }
+async function saveSettings(extra={}){
+  const body=Object.assign({public_url:$('sPub').value,port:+$('sPort').value,default_format:$('sFmt').value,hls_time:+$('sHt').value,hls_list_size:+$('sHl').value,hls_idle_timeout:+$('sHi').value,source_idle_timeout:+$('sSi').value,transcode_bitrate:$('sBr').value,admin_user:$('sUser').value,current_pass:$('sCur').value,new_pass:$('sNew').value},extra);
+  try{ const r=await api('settings',{method:'PUT',body}); toast(r.restart_required?'Salvo! Reinicie o serviço para aplicar a nova porta.':'Configurações salvas','ok'); loadSettings(); refresh(); }catch(err){ toast(err.message,'err'); } }
+$('saveSettings').onclick=()=>saveSettings();
+$('regen').onclick=()=>{ if(confirm('Gerar novo token?\nTODOS os links atuais vão parar de funcionar.')) saveSettings({regen_token:true}); };
+$('restoreFile').onchange=async e=>{ const f=e.target.files[0]; if(!f) return;
+  try{ const data=JSON.parse(await f.text()); if(!confirm('Restaurar backup com '+(data.channels||[]).length+' canal(is)?\nOs canais atuais serão substituídos.')) return;
+    const r=await api('restore',{method:'POST',body:data}); toast('Backup restaurado: '+r.channels+' canais','ok'); loadSettings(); refresh(); }catch(err){ toast('Backup inválido: '+err.message,'err'); } e.target.value=''; };
+
+/* ================= logs ================= */
+document.querySelectorAll('#logFilter button').forEach(b=>b.onclick=()=>{ document.querySelectorAll('#logFilter button').forEach(x=>x.classList.remove('on')); b.classList.add('on'); logFilter=b.dataset.f; loadLogs(); });
+async function loadLogs(){ const r=await api('logs');
+  $('logs').innerHTML=r.logs.slice().reverse().filter(l=>!logFilter||l.level===logFilter).map(l=>`<span class="lv-${l.level}">${new Date(l.t*1000).toLocaleString('pt-BR')}  ${l.level.padEnd(7)}  ${esc(l.msg)}</span>`).join('\n')||'<span class="dim">Sem eventos.</span>'; }
+
+/* ================= start ================= */
+async function checkFluss(){ try{ const f=await api('flussonic'); $('flussPill').innerHTML=f.detected?'<span class="dot ok"></span>Flussonic OK'+(f.ports.length?' · '+f.ports.slice(0,3).join(', '):''):'<span class="dot"></span>Flussonic não detectado'; $('flussPill').title=f.detected?'Flussonic rodando — Codermax isolado na porta '+ST.port:''; }catch(e){} }
+let timer=null;
+async function start(){
+  try{ await api('status'); }catch(e){ return showLogin(); }
+  $('login').classList.add('hidden'); $('app').classList.remove('hidden');
+  await refresh(); checkFluss(); const h0=location.hash.slice(1); go(h0 in TITLES ? h0 : 'dash');
+  clearInterval(timer); timer=setInterval(refresh,2500);
+  clearInterval(thumbTimer); thumbTimer=setInterval(()=>{ if(page==='mosaic'||page==='channels') refreshThumbs(page==='mosaic'); },30000);
+  window.addEventListener('resize',()=>{ if(page==='dash') areaChart($('bigChart'),totalHist); });
+}
+start();
+</script>
+</body>
+</html>
